@@ -9,8 +9,11 @@ function showScreen(html, kind, cls = '') {
   if (G.mode === 'play') G.paused = true; Sfx.play('click');
 }
 function closeScreen() {
+  const was = Scr.kind;
   scrEl.className = 'hidden'; scrEl.innerHTML = ''; Scr.open = false; Scr.kind = '';
   if (G.mode === 'wardrobe') G.mode = 'play'; if (G.mode === 'play') G.paused = false;
+  /* başlık ekranındayken paneli kapatınca boş ekranda kalma: başlığa dön */
+  if (G.mode === 'title' && was && was !== 'title' && typeof showTitle === 'function') showTitle();
 }
 scrEl.addEventListener('click', (e) => {
   if (e.target === scrEl && !['title', 'story', 'finale'].includes(Scr.kind)) { closeScreen(); return; }
@@ -54,6 +57,7 @@ const ui = (G.ui = {
     if (show) eb.querySelector('i').style.transform = `scaleX(${clamp(P.energy / MAX_ENERGY, 0, 1)})`;
   },
   netChanged() {
+    if (G.mode === 'title' && Net.active && Net.status !== 'error') { setTimeout(() => { if (G.mode === 'title' && Net.active) startPlaying(); }, 700); }
     const l = $('mpList'); l.innerHTML = '';
     Net.players.forEach((p) => { const d = document.createElement('div'); d.className = 'pill small'; d.textContent = `🐼 ${p.name} · 📍${WORLD_META[p.w] ? WORLD_META[p.w].name : '?'}`; d.title = 'Yanına git'; d.onclick = () => { if (G.world) G.loadWorld(WORLD_META[p.w] ? p.w : 'village', { pos: { x: p.tx, y: p.ty, z: p.tz }, silent: true }); }; l.appendChild(d); });
     $('btnChat').classList.toggle('hidden', !Net.active); $('btnMic').classList.toggle('hidden', !Net.active);
