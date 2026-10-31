@@ -51,10 +51,11 @@ function makeTerrain(w, o) {
 }
 /* Çim demetleri (tek çizimde binlerce) */
 function addGrass(w, colors, count) {
+  const RG = w.reach || 100;
   count = Math.round(count * (save.settings.quality === 'low' ? 0.25 : 1));
   const g = geo('cone', 0.06, 0.55, 5), m = new T.MeshStandardMaterial({ roughness: 0.9, side: T.DoubleSide }), im = new T.InstancedMesh(g, m, count), d = new T.Object3D(), c = new T.Color(); let k = 0, tries = 0;
   while (k < count && tries++ < count * 6) {
-    const x = lerp(-100, 100, w.rng()), z = lerp(-100, 100, w.rng()), h = w.groundAt(x, z);
+    const x = lerp(-RG, RG, w.rng()), z = lerp(-RG, RG, w.rng()), h = w.groundAt(x, z);
     if (h < 0.9 || pathDist(w.paths, x, z) < 2.6) continue;
     const s = 0.4 + w.rng() * 0.6; d.position.set(x, h + 0.25 * s, z); d.rotation.set((w.rng() - 0.5) * 0.4, w.rng() * 6, (w.rng() - 0.5) * 0.4); d.scale.set(s, s * (0.9 + w.rng() * 0.9), s); d.updateMatrix();
     im.setMatrixAt(k, d.matrix); c.set(pick(colors)); im.setColorAt(k, c); k++;
@@ -63,11 +64,11 @@ function addGrass(w, colors, count) {
 }
 function openWorld(cfg) {
   const w = newWorld(cfg.id, { sky: cfg.sky, fog: cfg.fog, fogD: cfg.fogD, water: cfg.water, hemi: cfg.hemi, sunI: cfg.sunI, theme: cfg.theme, waterY: cfg.waterY ?? -1.2, minY: (cfg.waterY ?? -1.2) - 1.4 });
-  w.paths = cfg.paths || []; w.flats = cfg.flats; w.surfaceAt = cfg.surfaceAt || null;
+  w.paths = cfg.paths || []; w.flats = cfg.flats; w.surfaceAt = cfg.surfaceAt || null; w.reach = cfg.reach || 100; w.half = cfg.half || 120; w.mapHalf = cfg.mapHalf || 0; const RV = (cfg.reach || 100) - 5;
   /* Yeryüzü: dalgalı tepeler + çukurlar (alt kısmı çamur) + tümsekler. Düz alanlara ve yollara dokunmaz. */
   const rr = mulberry(hashStr(cfg.id + 'relief')), rel = Object.assign({ pits: 7, mounds: 10, amp: 1.5 }, cfg.relief || {}), spots = [], pits = [], mounds = [];
   const roomFor = (x, z, r) => !cfg.flats.some((f) => Math.hypot(x - f[0], z - f[1]) < f[3] + r + 2) && pathDist(w.paths, x, z) > r + 4 && Math.hypot(x / cfg.rx, z / cfg.rz) < 0.74 && !spots.some((s) => Math.hypot(x - s[0], z - s[1]) < s[2] + r + 3);
-  const place = (n, list, r0, r1, a0, a1, minBase = -99) => { for (let t = 0, k = 0; k < n && t < n * 120; t++) { const x = lerp(-95, 95, rr()), z = lerp(-95, 95, rr()), r = lerp(r0, r1, rr()); if (!roomFor(x, z, r) || cfg.hills(x, z) < minBase) continue; list.push({ x, z, r, a: lerp(a0, a1, rr()) }); spots.push([x, z, r]); k++; } };
+  const place = (n, list, r0, r1, a0, a1, minBase = -99) => { for (let t = 0, k = 0; k < n && t < n * 120; t++) { const x = lerp(-RV, RV, rr()), z = lerp(-RV, RV, rr()), r = lerp(r0, r1, rr()); if (!roomFor(x, z, r) || cfg.hills(x, z) < minBase) continue; list.push({ x, z, r, a: lerp(a0, a1, rr()) }); spots.push([x, z, r]); k++; } };
   place(rel.pits, pits, 5, 8, 2.4, 3.4, rel.minBase ?? 4.2); place(rel.mounds, mounds, 7, 12, 2.6, 5.2);
   w.pits = pits; w.mounds = mounds; const floor = (cfg.waterY ?? -1.2) + 0.9;
   const hfn = (x, z) => {
@@ -80,7 +81,7 @@ function openWorld(cfg) {
   };
   pits.forEach((p) => addMud(w, p.x, p.z, p.r * 0.5));
   const mudAt = (x, z) => w.mudZones.some((m) => Math.hypot(x - m.x, z - m.z) < m.r);
-  makeTerrain(w, { half: 120, step: save.settings.quality === 'low' ? 3 : 2, hfn, color: (x, z, h, sl) => (mudAt(x, z) ? 0x6b4a2e : pits.some((p) => Math.hypot(x - p.x, z - p.z) < p.r * 0.75) ? 0x8a6a42 : cfg.color(x, z, h, sl, pathDist(w.paths, x, z))) });
+  makeTerrain(w, { half: cfg.half || 120, step: cfg.step || (save.settings.quality === 'low' ? 3 : 2), hfn, color: (x, z, h, sl) => (mudAt(x, z) ? 0x6b4a2e : pits.some((p) => Math.hypot(x - p.x, z - p.z) < p.r * 0.75) ? 0x8a6a42 : cfg.color(x, z, h, sl, pathDist(w.paths, x, z))) });
   if (cfg.grass) addGrass(w, cfg.grass, cfg.grassCount || 16000);
   return w;
 }
@@ -103,7 +104,7 @@ const pick2 = (arr, r) => arr[Math.floor(r() * arr.length)];
 const gy = (w, x, z) => w.groundAt(x, z);
 function scatterT(w, n, fn, ex = [], o = {}) {
   n = Math.ceil(n * (save.settings.quality === 'low' ? 0.55 : 1));
-  let placed = 0, tries = 0; const minH = o.minH ?? 0.8, reach = o.reach ?? 100;
+  let placed = 0, tries = 0; const minH = o.minH ?? 0.8, reach = o.reach ?? (w.reach || 100);
   while (placed < n && tries++ < n * 50) {
     const x = lerp(-reach, reach, w.rng()), z = lerp(-reach, reach, w.rng()), h = gy(w, x, z);
     if (h < minH) continue;

@@ -108,10 +108,11 @@ const DIFFICULTY = {
 const SAVE_KEY = 'mochi_panda_koyu_kayit_v1';
 const defaultSave = () => ({
   v: 1, name: 'Mochi', coins: 0, rescued: {}, bossDown: {}, chests: {}, owned: {},
-  equip: { hat: 'none', glasses: 'none', scarf: 'none', pack: 'none', trail: 'none', fur: 'classic' },
+  equip: { hat: 'none', glasses: 'none', scarf: 'none', pack: 'none', trail: 'none', fur: 'classic', outfit: 'none', form: 'panda', pet: 'none' },
+  vstyle: { size: 1, color: 'def' },
   stats: { jumps: 0, stomps: 0, coins: 0, rolls: 0, abil: 0, chests: 0, worlds: 0 },
   daily: { date: '', quests: [], bonus: false },
-  wood: 0, food: {}, home: { stage: 0, wall: 'cream', roof: 'red', door: 'blue', items: {} }, race: { pts: 0, wins: {}, best: {} }, seen: {},
+  wood: 0, food: {}, home: { stage: 0, plot: 0, wall: 'cream', roof: 'red', door: 'blue', items: {} }, race: { pts: 0, wins: {}, best: {} }, seen: {},
   streak: { last: '', count: 0 },
   difficulty: 'normal', settings: { music: true, sfx: true, shadows: true, chat: true, voice: false, time: 'auto', quality: (typeof matchMedia === 'function' && matchMedia('(pointer:coarse)').matches) ? 'low' : 'high', easy: false, size: 1 }, finale: false, intro: false, bugs: {},
 });
@@ -158,7 +159,7 @@ function exportCode() {
   [s.finale, s.intro, st.easy, st.voice, st.music, st.sfx, st.shadows, st.chat, st.quality === 'low'].forEach((b) => w.u(1, b ? 1 : 0));
   w.u(2, Math.max(0, DIFF_IDS.indexOf(s.difficulty))); w.u(2, Math.max(0, TIME_IDS.indexOf(st.time)));
   w.u(7, clamp(Math.round(((st.size || 1) - 0.6) * 100), 0, 127));
-  Object.keys(SHOP).forEach((c) => { w.u(4, Math.max(0, SHOP[c].items.findIndex((i) => i.id === s.equip[c]))); SHOP[c].items.forEach((i) => w.u(1, s.owned[c + ':' + i.id] ? 1 : 0)); });
+  Object.keys(CODE_LEGACY).forEach((c) => { const its = SHOP[c].items.slice(0, CODE_LEGACY[c]); w.u(4, Math.max(0, its.findIndex((i) => i.id === s.equip[c]))); its.forEach((i) => w.u(1, s.owned[c + ':' + i.id] ? 1 : 0)); });
   Object.keys(BUGS).forEach((k) => w.u(1, s.bugs[k] ? 1 : 0));
   w.u(7, clamp(s.streak.count, 0, 127)); w.u(1, s.streak.last === todayStr() || s.streak.last === yesterdayStr() ? 1 : 0);
   w.u(8, checkBits(w.bits));
@@ -167,6 +168,7 @@ function exportCode() {
   return out;
 }
 const codeChunks = (raw) => ['MOCHI', ...(raw.match(/.{1,4}/g) || [])];
+const fullCode = () => 'MK1.' + btoa(unescape(encodeURIComponent(JSON.stringify(save))));
 const prettyCode = () => codeChunks(exportCode()).join('-');
 function importCode(input) {
   try {
@@ -186,7 +188,7 @@ function importCode(input) {
     FRIEND_ORDER.forEach((f) => { if (rd.u(1)) s.rescued[f] = true; }); ['w1', 'w2', 'w3'].forEach((k) => { if (rd.u(1)) s.bossDown[k] = true; });
     s.finale = !!rd.u(1); s.intro = !!rd.u(1); st.easy = !!rd.u(1); st.voice = !!rd.u(1); st.music = !!rd.u(1); st.sfx = !!rd.u(1); st.shadows = !!rd.u(1); st.chat = !!rd.u(1); st.quality = rd.u(1) ? 'low' : 'high';
     s.difficulty = DIFF_IDS[rd.u(2)] || 'normal'; st.time = TIME_IDS[rd.u(2)] || 'auto'; st.size = clamp(rd.u(7) / 100 + 0.6, 0.6, 1.5);
-    Object.keys(SHOP).forEach((cat) => { const idx = rd.u(4); s.equip[cat] = (SHOP[cat].items[idx] || SHOP[cat].items[0]).id; SHOP[cat].items.forEach((i) => { if (rd.u(1)) s.owned[cat + ':' + i.id] = true; }); });
+    Object.keys(CODE_LEGACY).forEach((cat) => { const its = SHOP[cat].items.slice(0, CODE_LEGACY[cat]), idx = rd.u(4); s.equip[cat] = (its[idx] || its[0]).id; its.forEach((i) => { if (rd.u(1)) s.owned[cat + ':' + i.id] = true; }); });
     Object.keys(BUGS).forEach((k) => { if (rd.u(1)) s.bugs[k] = true; });
     s.streak.count = rd.u(7); if (rd.u(1)) s.streak.last = yesterdayStr();
     const used = bits.slice(0, bits.length - rd.left()), chk = rd.u(8);
@@ -199,7 +201,7 @@ const hasAbility = () => true;
 const rescuedCount = () => FRIEND_ORDER.filter((f) => save.rescued[f]).length;
 const worldDone = (w) => Object.keys(FRIENDS).filter((f) => FRIENDS[f].world === w).every((f) => save.rescued[f]);
 const extraRescued = () => Object.keys(FRIENDS).filter((f) => !FRIEND_ORDER.includes(f) && save.rescued[f]).length;
-const isOwned = (cat, id) => id === 'none' || id === 'classic' || !!save.owned[cat + ':' + id];
+const isOwned = (cat, id) => id === 'none' || id === 'classic' || id === 'panda' || !!save.owned[cat + ':' + id];
 
 /* ---------- Günlük görevler ---------- */
 function ensureDaily() {

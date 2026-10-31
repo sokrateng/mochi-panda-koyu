@@ -46,3 +46,11 @@ Sonra `http://localhost:3000` adresini aç. 3B kütüphane (three.js) ve PeerJS 
 - 🌙 Köydeki arkadaşların evinde de **pijama partisi** yapılır (evin içindeki halıda "Pijama Partisi Yap").
 - 🚗 Çanta panelinden **araç boyutu ve rengi** ayarlanır.
 - 🏃 Yürüme 3 kat hızlı; uçuşta bırakınca hızlıca yere inilir.
+
+## Yeni: Deniz Adaları, büyük köy, evcil hayvan, karakter biçimi
+- 🏝️ **Deniz Adaları** (köydeki limandan ya da haritadan): 24 ada, 24 yeni hayvan. Her hayvanı kurtarışında (herhangi bir dünyada) yeni bir ada ve köprü açılır.
+- 🏘️ Köy 1,5 kat büyüdü; 6 ev arsası var. Evini istediğin arsaya taşıyabilirsin (tezgahtan ya da arsadaki işarete dokunarak). Odadaki arkadaşlarının evleri de köyde görünür.
+- 🏡 Ev daha geniş (16×12) ve 3 kata kadar çıkar.
+- 👕 Yeni kıyafetler (13), şapkalar, gözlükler, atkılar ve sırt eşyaları. 🐾 **Karakter** sekmesinden kedi, köpek, kuş, tavşan, sincap, kaplumbağa… olabilirsin. 🐕 **Evcil** sekmesinden peşinden gelen bir dost seç.
+- 🤝 Çok oyunculu: araç rengi/boyutu, karakter biçimi ve evcil hayvan arkadaşlarında da görünür; **Birlikte gez** açıkken biri portala girince herkes aynı dünyaya gider.
+- 💾 "Bağlantıyı paylaş" artık tüm ilerlemeyi taşır (kısa kod eski eşyalarla sınırlı kalır).

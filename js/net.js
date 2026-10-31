@@ -5,11 +5,12 @@
 const EMOTES = ['👋', '😀', '❤️', '🎉', '🤗', '😮'];
 const cleanName = (n) => String(n || '').replace(/[^\p{L}\p{N} ]/gu, '').trim().slice(0, 12) || 'Mochi';
 const cleanEquip = (e) => {
-  const out = { hat: 'none', glasses: 'none', scarf: 'none', pack: 'none', trail: 'none', fur: 'classic' };
+  const out = { hat: 'none', glasses: 'none', scarf: 'none', pack: 'none', trail: 'none', fur: 'classic', outfit: 'none', form: 'panda', pet: 'none' };
   if (e && typeof e === 'object') for (const k of Object.keys(out)) if (typeof e[k] === 'string' && SHOP[k].items.some((i) => i.id === e[k])) out[k] = e[k];
   return out;
 };
 const cleanChat = (m) => String(m || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 80);
+const cleanVs = (c, z) => ({ c: VEH_COLORS.some((x) => x.id === c) ? c : 'def', z: clamp(Number(z) || 1, 0.5, 2.5) });
 const num = (v, lim = 2000) => (Number.isFinite(v) ? clamp(v, -lim, lim) : 0);
 const AWAY_GRACE_MS = 45000;
 
@@ -52,7 +53,7 @@ const Voice = {
 const Net = {
   active: false, isHost: false, peer: null, conns: new Map(), players: new Map(), code: '', id: '', status: 'idle', sendT: 0, hostConn: null, max: 15, error: '',
   wantRoom: false, clientId: '', sid: '', retryTimer: 0, lastRecv: 0, awayLocal: false,
-  hello() { return { t: 'hello', name: cleanName(save.name), equip: save.equip, w: G.world ? G.world.id : 'village', v: Voice.on ? 1 : 0, sid: this.sid, sz: save.settings.size || 1 }; },
+  hello() { return { t: 'hello', name: cleanName(save.name), equip: save.equip, w: G.world ? G.world.id : 'village', v: Voice.on ? 1 : 0, sid: this.sid, sz: save.settings.size || 1, vc: vehStyle().color, vz: vehSize(), hs: G.ex && G.ex.home ? G.ex.home.pubInfo() : null }; },
   setStatus(s, err = '') {
     const was = this.status; this.status = s; this.error = err;
     if (s === 'reconnecting' && was !== 'reconnecting') G.ui.toast('🔄 Bağlantı yeniden kuruluyor… Odadan ayrılmadın.');
@@ -91,7 +92,7 @@ const Net = {
       this.conns.set(c.peer, c);
       const p = this.players.get(c.peer); if (p) { clearTimeout(p.dropTimer); p.away = false; this.refreshLabel(p); }
       c.send({ ...this.hello(), id: this.id });
-      this.players.forEach((q, id) => { if (id !== c.peer) c.send({ t: 'hello', id, name: q.name, equip: q.equip, w: q.w, v: q.v ? 1 : 0, sz: q.sz || 1 }); });
+      this.players.forEach((q, id) => { if (id !== c.peer) c.send({ t: 'hello', id, name: q.name, equip: q.equip, w: q.w, v: q.v ? 1 : 0, sz: q.sz || 1, vc: q.vs ? q.vs.c : 'def', vz: q.vs ? q.vs.z : 1, hs: q.hs || null }); });
       G.ui.netChanged();
     });
     c.on('data', (d) => this.onMsg(d, c));
@@ -156,13 +157,14 @@ const Net = {
       case 'hello': {
         const sid = typeof d.sid === 'string' ? d.sid.slice(0, 16) : '';
         if (sid) for (const [oid, op] of [...this.players]) if (oid !== d.id && op.sid === sid) { this.dropPlayer(oid, true); if (this.isHost) this.conns.forEach((c) => c.open && c.send({ t: 'bye', id: oid })); }
-        this.upsert(d.id, { name: cleanName(d.name), equip: cleanEquip(d.equip), w: String(d.w), v: d.v ? 1 : 0, sid, sz: clamp(Number(d.sz) || 1, 0.6, 1.5) }); break; }
+        this.upsert(d.id, { name: cleanName(d.name), equip: cleanEquip(d.equip), w: String(d.w), v: d.v ? 1 : 0, sid, sz: clamp(Number(d.sz) || 1, 0.6, 1.5), vs: cleanVs(d.vc, d.vz), hs: G.ex && G.ex.home ? G.ex.home.cleanInfo(d.hs) : null }); break; }
       case 'chat': { const p = this.players.get(d.id), text = cleanChat(d.m); if (p && text && save.settings.chat) { G.ui.chatLine(p.name, text); if (p.mesh) Labels.temp(text, 'bubble', (v) => v.set(p.mesh.position.x, p.mesh.position.y + 3.1, p.mesh.position.z), 5); } break; }
       case 'away': { const p = this.players.get(d.id); if (p) { p.away = !!d.a; this.refreshLabel(p); } break; }
       case 'st': {
         const p = this.players.get(d.id);
-        if (p) { p.w = String(d.w); p.tx = num(d.x); p.ty = num(d.y); p.tz = num(d.z); p.tr = num(d.r, 20); p.a = d.a | 0; p.inv = d.i ? 1 : 0; p.vh = clamp(d.vh | 0, 0, 5); if (!p.seen) { p.seen = true; if (p.mesh) p.mesh.position.set(p.tx, p.ty, p.tz); } p.last = G.time; }
+        if (p) { p.w = String(d.w); p.tx = num(d.x); p.ty = num(d.y); p.tz = num(d.z); p.tr = num(d.r, 20); p.a = d.a | 0; p.inv = d.i ? 1 : 0; p.vh = clamp(d.vh | 0, 0, 5); if (d.vc !== undefined) p.vs = cleanVs(d.vc, d.vz); if (!p.seen) { p.seen = true; if (p.mesh) p.mesh.position.set(p.tx, p.ty, p.tz); } p.last = G.time; }
         break; }
+      case 'goto': if (G.looks) G.looks.followGoto(d); break;
       case 'rescue': if (FRIENDS[d.f]) rescueFriend(d.f, true); break;
       case 'emote': { const p = this.players.get(d.id); const e = EMOTES[d.e | 0]; if (p && e && p.mesh) Labels.temp(e, 'emote', (v) => v.set(p.mesh.position.x, p.mesh.position.y + 3, p.mesh.position.z), 2.2); break; }
       case 'bye': this.dropPlayer(d.id); break;
@@ -170,7 +172,7 @@ const Net = {
   },
   upsert(id, info) {
     let p = this.players.get(id);
-    if (!p) { p = { id, mesh: null, tx: 0, ty: 0, tz: 0, tr: 0, a: 0, inv: 0, vh: 0, w: 'village', phase: 0, label: null, seen: false, away: false, name: info.name, equip: info.equip }; this.players.set(id, p); G.ui.toast(`🐼 ${info.name} geldi!`); }
+    if (!p) { p = { id, mesh: null, tx: 0, ty: 0, tz: 0, tr: 0, a: 0, inv: 0, vh: 0, w: 'village', phase: 0, label: null, seen: false, away: false, name: info.name, equip: info.equip, vs: { c: 'def', z: 1 } }; this.players.set(id, p); G.ui.toast(`🐼 ${info.name} geldi!`); }
     clearTimeout(p.dropTimer); p.away = false;
     const changed = !p.mesh || JSON.stringify(p.equip) !== JSON.stringify(info.equip);
     Object.assign(p, info);
@@ -200,11 +202,14 @@ const Net = {
     const m = cleanChat(text); if (!m || !save.settings.chat) return;
     G.ui.chatLine(save.name, m, true); Labels.temp(m, 'bubble', (v) => v.set(P.pos.x, P.pos.y + 3.1, P.pos.z), 5); this.send({ t: 'chat', m });
   },
-  onWorld() { if (this.active) this.send(this.hello()); },
+  onWorld() {
+    if (!this.active) return; this.send(this.hello());
+    if (this.suppressGoto === G.world.id) this.suppressGoto = ''; else this.send({ t: 'goto', w: G.world.id });
+  },
   sendState() {
     if (!G.world) return; const r = (v) => Math.round(v * 100) / 100;
     const a = P.fly ? 4 : P.rolling > 0 ? 3 : !P.onGround ? 2 : Math.hypot(P.vel.x, P.vel.z) > 1 ? 1 : 0;
-    this.send({ t: 'st', w: G.world.id, x: r(P.pos.x), y: r(P.pos.y), z: r(P.pos.z), r: r(P.yaw), a, i: P.invis > 0 ? 1 : 0, vh: P.vehicle ? VEH_ORDER.indexOf(P.vehicle) + 1 : 0 });
+    this.send({ t: 'st', w: G.world.id, x: r(P.pos.x), y: r(P.pos.y), z: r(P.pos.z), r: r(P.yaw), a, i: P.invis > 0 ? 1 : 0, vh: P.vehicle ? VEH_ORDER.indexOf(P.vehicle) + 1 : 0, vc: P.vehicle ? vehStyle().color : undefined, vz: P.vehicle ? vehSize() : undefined });
   },
   /* uygulama arka plandayken oyun döngüsü durur; bu sayaç bağlantıyı canlı tutar */
   beat() {
@@ -241,8 +246,9 @@ const Net = {
       u.armL.rotation.z = lerp(u.armL.rotation.z, air ? -1.8 : -0.1, k); u.armR.rotation.z = lerp(u.armR.rotation.z, air ? 1.8 : 0.1, k);
       if (p.a === 3) u.body.rotation.x += dt * 20; else u.body.rotation.x = lerp(u.body.rotation.x % (Math.PI * 2) > Math.PI ? u.body.rotation.x - Math.PI * 2 : u.body.rotation.x, p.a === 4 ? 0.55 : 0, k);
       u.body.position.y = Math.abs(Math.sin(p.phase)) * 0.1 * run; u.body.position.z = 0; if (u.flame) u.flame.visible = p.a === 4;
-      const vid = p.vh ? VEH_ORDER[p.vh - 1] : null; if ((u.vehId || null) !== vid) setVehicle(m, vid);
+      const vid = p.vh ? VEH_ORDER[p.vh - 1] : null, vs = p.vs || { c: 'def', z: 1 }; if ((u.vehId || null) !== vid || (vid && (u.vcol !== vs.c || Math.abs((u.vsize || 1) - vs.z) > 0.01))) setVehicle(m, vid, { color: vs.c, size: vs.z });
       if (vid) applyRiderPose(m, vid, Math.hypot(m.position.x - ox, m.position.z - oz) / Math.max(dt, 0.001), dt, G.time);
+      if (G.looks) G.looks.animRemote(p, m, dt);
       const al = p.inv ? 0.3 : 1; if (p.alpha !== al) { p.alpha = al; setAlpha(m, al); }
     });
   },

@@ -39,7 +39,8 @@ Ex.REGIONS = [
   { id: 'village', icon: '🏘️', name: 'Panda Köyü', world: 'village', open: () => true, need: 'Baştan açık' },
   { id: 'w1', icon: '🎋', name: 'Bambu Ormanı', world: 'w1', open: () => true, need: 'Baştan açık' },
   { id: 'arena', icon: '🏁', name: 'Yarış Arenası', world: 'arena', mapIn: 'village', x: 30, z: 40, tp: { x: 30, z: 34 }, open: need(1), need: '1 arkadaş kurtar' },
-  { id: 'home', icon: '🏡', name: 'Ev Arsası ve Mangal Bahçesi', world: 'village', x: -46, z: 38, r: 17, tp: { x: -24, z: 38 }, open: need(2), need: '2 arkadaş kurtar' },
+  { id: 'home', icon: '🏡', name: 'Ev Arsası ve Mangal Bahçesi', world: 'village', get x() { return Ex.home.Y.cx; }, get z() { return Ex.home.Y.cz; }, r: 17, get tp() { return { x: Ex.home.Y.cx + 21, z: Ex.home.Y.cz }; }, open: need(2), need: '2 arkadaş kurtar' },
+  { id: 'sea', icon: '🏝️', name: 'Deniz Adaları', world: 'sea', open: () => totalRescued() >= 1, need: 'İlk arkadaşını kurtar' },
   { id: 'w2', icon: '🔮', name: 'Gizli Mağara', world: 'w2', open: () => worldDone('w1'), need: 'Bambu Ormanı arkadaşlarını kurtar' },
   { id: 'w3', icon: '🏔️', name: 'Buzul Dağ', world: 'w3', open: () => worldDone('w2'), need: 'Gizli Mağara arkadaşlarını kurtar' },
 ];
@@ -62,8 +63,8 @@ Ex.watchRegions = () => {
 };
 
 /* ---------- Harita ---------- */
-const mapHalf = (w) => (w.id === 'arena' ? 85 : 105);
-const MAP_COL = Object.assign({}, ...Object.entries(XTH).map(([k, t]) => ({ [k]: t.mapCol })), { cave: [[52, 38, 98], [128, 98, 196]], ice: [[140, 180, 214], [250, 253, 255]], forest: [[52, 140, 54], [160, 206, 92]], village: [[78, 168, 66], [176, 214, 104]] });
+const mapHalf = (w) => w.mapHalf || (w.id === 'arena' ? 85 : 105);
+const MAP_COL = Object.assign({ sea: [[60, 170, 90], [240, 230, 170]] }, ...Object.entries(XTH).map(([k, t]) => ({ [k]: t.mapCol })), { cave: [[52, 38, 98], [128, 98, 196]], ice: [[140, 180, 214], [250, 253, 255]], forest: [[52, 140, 54], [160, 206, 92]], village: [[78, 168, 66], [176, 214, 104]] });
 Ex.mapBg = (w) => {
   if (w.mapBg) return w.mapBg;
   const N = 140, c = document.createElement('canvas'); c.width = c.height = N; const x = c.getContext('2d'), img = x.createImageData(N, N), half = mapHalf(w), st = (half * 2) / N, col = MAP_COL[w.theme] || MAP_COL.village;
@@ -111,6 +112,7 @@ Ex.openMap = () => {
     <canvas id="mapCv" width="360" height="360" aria-label="Harita"></canvas>${rows}<p class="note">Her hayvanı kurtarışında yeni bir dünya açılır, bu böyle sonsuza kadar sürer! 🌍 Haritayı M tuşuyla da açabilirsin.</p></div>`, 'map');
   Ex.drawMap($('mapCv'), w, true);
 };
+Ex.acts.togfollow = () => { save.settings.follow = save.settings.follow === false; queueSave(); ui.openMP(); };
 Ex.acts.map = () => { closeScreen(); setTimeout(Ex.openMap, 40); };
 Ex.acts.mapgo = (d) => {
   const r = Ex.region(d.id); if (!r || !r.open()) return; closeScreen();
@@ -229,4 +231,17 @@ Ex.mods.push({
     addInteract(w, gx, gz + 1, 4.2, '🌍 Dünya Kapısı: yeni dünyalara git', () => Ex.openMap());
   },
   update() { if (Ex.gateDisc && G.world && G.world.id === 'village') { Ex.gateDisc.rotation.z += 0.03; Ex.gateDisc.material.opacity = 0.55 + Math.sin(G.time * 3) * 0.15; } },
+});
+
+/* ---------- Köyde liman: Deniz Adaları'na iskele ---------- */
+Ex.mods.push({
+  onWorld(w) {
+    if (w.id !== 'village') return;
+    const hx = 125, hz = -40, y0 = 0.1;
+    const pier = solid(w, hx + 8, y0 + 0.9, hz, 22, 5, { h: 1.4, type: 'wood' });
+    for (let i = 0; i < 6; i++) { const post = mesh(geo('cyl', 0.2, 0.24, 2.4, 6), M(0x6a4222), hx + 2 + i * 3.8, 0.0, hz + 2.8); w.group.add(post); const p2 = mesh(geo('cyl', 0.2, 0.24, 2.4, 6), M(0x6a4222), hx + 2 + i * 3.8, 0.0, hz - 2.8); w.group.add(p2); }
+    addPortal(w, hx + 17, y0 + 0.9, hz, 'sea', 0x4ad0ff, 'Deniz Adaları');
+    addSign(w, hx - 2, 0, hz + 4, '⚓ Liman: Deniz Adaları! Her hayvanı kurtardıkça yeni adalar açılır.');
+    void pier;
+  },
 });

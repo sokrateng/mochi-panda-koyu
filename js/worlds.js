@@ -345,11 +345,11 @@ function house(w, x, z, color, fid, rescued) {
   if (rescued) { const n = makeCreature(fid); n.position.set(nx, 0, nz); n.rotation.y = rot + Math.PI * 0.9; add(w, n); w.npcs.push({ fid, x: nx, z: nz, mesh: n }); }
 }
 function buildVillage() {
-  const vflats = [[0, 10, 22, 34, 0], [-31, 4, 11, 19, 0], [-27, -14, 11, 19, 0], [31, 4, 11, 19, 0], [27, -14, 11, 19, 0], [0, 33, 11, 19, 0], [-20, -28, 9, 16, 0], [0, -37, 9, 16, 0], [20, -28, 9, 16, 0], [-46, 38, 24, 34, 0], [30, 40, 8, 14, 0]];
-  const vpaths = [[[0, 10], [-31, 4]], [[0, 10], [-27, -14]], [[0, 10], [31, 4]], [[0, 10], [27, -14]], [[0, 10], [0, 33]], [[0, -6], [-20, -28]], [[0, -6], [0, -37]], [[0, -6], [20, -28]], [[0, 10], [-29, 38]], [[0, 10], [30, 40]]];
+  const vflats = [[0, 10, 22, 34, 0], [-31, 4, 11, 19, 0], [-27, -14, 11, 19, 0], [31, 4, 11, 19, 0], [27, -14, 11, 19, 0], [0, 33, 11, 19, 0], [-20, -28, 9, 16, 0], [0, -37, 9, 16, 0], [20, -28, 9, 16, 0], [-46, 38, 24, 34, 0], [30, 40, 8, 14, 0], [-100, 15, 24, 34, 0], [-85, -70, 24, 34, 0], [100, 25, 24, 34, 0], [70, -90, 24, 34, 0], [0, 95, 24, 34, 0], [125, -40, 11, 19, 0]];
+  const vpaths = [[[0, 10], [-31, 4]], [[0, 10], [-27, -14]], [[0, 10], [31, 4]], [[0, 10], [27, -14]], [[0, 10], [0, 33]], [[0, -6], [-20, -28]], [[0, -6], [0, -37]], [[0, -6], [20, -28]], [[0, 10], [-29, 38]], [[0, 10], [30, 40]], [[-31, 4], [-83, 15]], [[-27, -14], [-68, -70]], [[31, 4], [117, 25]], [[27, -14], [87, -90]], [[0, 33], [17, 95]], [[31, 4], [125, -40]]];
   const w = openWorld({
-    id: 'village', sky: [0x4fc3ff, 0xd9f6ff], fog: 0xd9f6ff, fogD: 0.0042, water: 0x3fb6e8, hemi: [0xffffff, 0x9acb8a, 0.85], sunI: 0.9, theme: 'village', rx: 100, rz: 100, flats: vflats, paths: vpaths, waterY: -1.2,
-    grass: [0x6bc94a, 0x7fdc58, 0x5ab83e], grassCount: 14000, relief: { pits: 2, mounds: 5, amp: 0.6, minBase: 2.6 },
+    id: 'village', sky: [0x4fc3ff, 0xd9f6ff], fog: 0xd9f6ff, fogD: 0.0042, water: 0x3fb6e8, hemi: [0xffffff, 0x9acb8a, 0.85], sunI: 0.9, theme: 'village', rx: 150, rz: 150, half: 170, reach: 150, mapHalf: 165, flats: vflats, paths: vpaths, waterY: -1.2,
+    grass: [0x6bc94a, 0x7fdc58, 0x5ab83e], grassCount: 26000, relief: { pits: 2, mounds: 5, amp: 0.6, minBase: 2.6 },
     hills: (x, z) => 1.6 * Math.sin(x * 0.05 + 0.5) * Math.cos(z * 0.045) + 0.9 * Math.sin(x * 0.12 + z * 0.1) * Math.cos(x * 0.07) + 1.4,
     color: (x, z, h, sl, pd) => {
       if (Math.hypot(x, z - 10) < 19) return (Math.floor(x / 2) + Math.floor(z / 2)) % 2 ? 0xe2d8c3 : 0xd8cdb6;
@@ -382,10 +382,11 @@ function buildVillage() {
   addSign(w, 0, 0, -31, '🔒 Önce Bambu Ormanı’nı bitir!'); addSign(w, 20, 0, -23, '🔒 Önce Gizli Mağara’yı bitir!');
   // ağaçlar, çiçekler
   const ex = exclusions(w);
-  scatterT(w, 80, (x, h, z) => tree(w, x, h, z, 0.8 + w.rng() * 0.8, pick([0x3fae5a, 0x4fc060, 0x35a055])), ex, { minH: 1 });
-  scatterT(w, 200, (x, h, z) => flower(w, x, h, z, pick([0xff7eb6, 0xffd23f, 0xffffff, 0x8fd0ff])), ex, { minH: 1 });
-  scatterT(w, 26, (x, h, z) => rock(w, x, h, z, 0.6 + w.rng() * 1.2), ex, { minH: 0.9 });
-  scatterT(w, 10, (x, h, z) => bamboo(w, x, h, z, 4.5), ex, { minH: 1 });
+  scatterT(w, 210, (x, h, z) => tree(w, x, h, z, 0.8 + w.rng() * 0.8, pick([0x3fae5a, 0x4fc060, 0x35a055])), ex, { minH: 1 });
+  scatterT(w, 560, (x, h, z) => flower(w, x, h, z, pick([0xff7eb6, 0xffd23f, 0xffffff, 0x8fd0ff])), ex, { minH: 1 });
+  scatterT(w, 70, (x, h, z) => rock(w, x, h, z, 0.6 + w.rng() * 1.2), ex, { minH: 0.9 });
+  scatterT(w, 24, (x, h, z) => bamboo(w, x, h, z, 4.5), ex, { minH: 1 });
+  scatterT(w, 30, (x, h, z) => mushroom(w, x, h, z, 0.8 + w.rng() * 0.8, pick([0xff5f5f, 0xffa24a])), ex, { minH: 1 });
   // gökte süzülen adalar (uçmayı öğrenince)
   const isl = (x, y, z, s) => { solid(w, x, y, z, s, s, { h: 3, type: 'grass' }); tree(w, x - s / 3, y, z - s / 3, 0.7); flower(w, x + 1, y, z, 0xff7eb6); flower(w, x - 1, y, z + 1, 0xffd23f); };
   isl(-30, 14, -36, 12); isl(30, 14, -36, 12); isl(0, 22, -60, 14);

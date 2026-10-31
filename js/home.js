@@ -6,7 +6,11 @@ const HOME_PAL = {
   door: { blue: 0x4aa8ff, red: 0xe05555, yellow: 0xf4c430, green: 0x4cc76a, purple: 0xa56bff },
 };
 const HOME_KIND = { wall: '🧱 Duvar', roof: '🏠 Çatı', door: '🚪 Kapı' };
-const HOME_STAGES = [{ name: 'Temel', icon: '🪨', wood: 4 }, { name: 'Duvarlar', icon: '🧱', wood: 8 }, { name: 'Çatı', icon: '🏠', wood: 6 }, { name: '2. Kat', icon: '🪜', wood: 10 }, { name: '3. Kat', icon: '🏰', wood: 12 }];
+const HOME_STAGES = [{ name: 'Temel', icon: '🪨', wood: 6 }, { name: 'Duvarlar', icon: '🧱', wood: 12 }, { name: 'Çatı', icon: '🏠', wood: 8 }, { name: '2. Kat', icon: '🪜', wood: 14 }, { name: '3. Kat', icon: '🏰', wood: 18 }];
+const HOME_PLOTS = [
+  { name: 'Güneş Bahçesi', x: -46, z: 38 }, { name: 'Çiçek Tepesi', x: -100, z: 15 }, { name: 'Göl Kıyısı', x: -85, z: -70 },
+  { name: 'Doğu Vadisi', x: 100, z: 25 }, { name: 'Kızıl Tepe', x: 70, z: -90 }, { name: 'Kuzey Ovası', x: 0, z: 95 },
+];
 const HOME_ITEMS = {
   bed: { name: 'Yatak', icon: '🛏️', wood: 4 }, sofa: { name: 'Koltuk', icon: '🛋️', wood: 3 }, table: { name: 'Masa', icon: '🍽️', wood: 2 },
   rug: { name: 'Halı', icon: '🟣', wood: 1 }, lamp: { name: 'Lamba', icon: '💡', wood: 1 }, shelf: { name: 'Kitaplık', icon: '📚', wood: 3 }, plant: { name: 'Saksı', icon: '🪴', wood: 1 },
@@ -20,10 +24,15 @@ const FOODS = {
   kebab:  { name: 'Şiş Kebap',       icon: '🍢', price: 10, en: 22, boost: 45, time: 4 },
 };
 const Home = (Ex.home = {
-  O: { x: -54, z: 38 }, HX: 5, HZ: 4, FY: 0.3, FH: 3.55, Y: { cx: -46, cz: 38, hx: 17, hz: 14 },
-  fire: { x: -39, z: 32 }, grill: { x: -37, z: 45 }, bench: { x: -46, z: 31 },
+  O: { x: -52, z: 38 }, HX: 8, HZ: 6, FY: 0.3, FH: 3.55, Y: { cx: -46, cz: 38, hx: 17, hz: 14 },
+  fire: { x: -39, z: 32 }, grill: { x: -37, z: 45 }, bench: { x: -46, z: 28 }, plot: 0,
   w: null, solids: [], itx: [], seats: [], trees: [], grp: null, roof: null, wallMat: null, gate: null, chopCd: 0, grillT: 0, campT: 0, cook: null, party: null,
 });
+Home.setPlot = (i) => {
+  const p = HOME_PLOTS[i] || HOME_PLOTS[0], cx = p.x, cz = p.z; Home.plot = HOME_PLOTS[i] ? i : 0;
+  Home.Y = { cx, cz, hx: 17, hz: 14 }; Home.O = { x: cx - 6, z: cz }; Home.fire = { x: cx + 7, z: cz - 6 }; Home.grill = { x: cx + 9, z: cz + 7 }; Home.bench = { x: cx, z: cz - 10 };
+};
+Home.setPlot(0);
 Ex.mods.push(Home);
 const hm = (c, o) => new T.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.85 }, o || {}));
 const gAdd = (grp, m, x, y, z, sx, sy, sz) => { const o = mesh(BOX(), m, x, y, z); o.scale.set(sx, sy, sz); grp.add(o); return o; };
@@ -95,7 +104,7 @@ Home.buildYard = (w) => {
   Home.gate = fenceRect(w, Y.cx, Y.cz, Y.hx, Y.hz, gw);
   addSign(w, Y.cx + Y.hx + 2.2, 0, Y.cz - 3.4, '🔒'); Home.signG = w.signs[w.signs.length - 1];
   /* ağaçlar */
-  [[-60, 27.5, 1.15], [-55, 26.5, 1.0], [-60.5, 49, 1.1], [-55, 50.2, 1.05], [-45, 50.2, 1.0], [-33.5, 27.5, 1.1], [-61, 32, 0.95]].forEach(([x, z, s]) => chopTree(w, x, z, s));
+  [[-14, -10.5, 1.15], [-9, -11.5, 1.0], [-14.5, 11, 1.1], [-9, 12.2, 1.05], [1, 12.2, 1.0], [12.5, -10.5, 1.1], [-15.5, -7, 0.95], [-4, -12, 1.0]].forEach(([x, z, s]) => chopTree(w, Y.cx + x, Y.cz + z, s));
   /* patika taşları: kapıdan eve */
   const pathM = hm(0xd6c3a0); for (let x = Y.cx + Y.hx - 1; x > Home.O.x + Home.HX + 0.5; x -= 1.6) { const st = mesh(geo('cyl', 0.62, 0.66, 0.08, 9), pathM, x, 0.04, Home.O.z + Math.sin(x * 2) * 0.18); st.receiveShadow = true; w.group.add(st); }
   /* mangal */
@@ -166,13 +175,13 @@ Home.rebuild = () => {
         const lf = gAdd(g, dm, HX + 0.9, FY + 1.2, -1.75, 1.3, 2.4, 0.1); lf.rotation.y = 0.5; g.add(mesh(geo('sph', 0.07, 6, 5), hm(0xffd23f), HX + 1.3, FY + 1.2, -1.5));
       } else {
         wall(HX, 0, Tk, 2 * HZ + Tk, y0, y1);
-        [-1.9, 1.9].forEach((z) => { gAdd(g, fm, HX + 0.19, y0 + 1.8, z, 0.06, 1.3, 1.7); gAdd(g, glass, HX + 0.23, y0 + 1.8, z, 0.04, 1.05, 1.45); });
+        [-3.4, 3.4].forEach((z) => { gAdd(g, fm, HX + 0.19, y0 + 1.8, z, 0.06, 1.3, 1.7); gAdd(g, glass, HX + 0.23, y0 + 1.8, z, 0.04, 1.05, 1.45); });
       }
-      [[-2.8, -HZ], [2.6, -HZ], [-2.8, HZ], [2.8, HZ]].forEach(([x, z]) => { const sd = z < 0 ? -1 : 1; gAdd(g, fm, x, y0 + 1.8, z + sd * 0.19, 1.7, 1.3, 0.06); gAdd(g, glass, x, y0 + 1.8, z + sd * 0.23, 1.45, 1.05, 0.04); gAdd(g, fm, x, y0 + 1.8, z + sd * 0.26, 0.06, 1.05, 0.04); });
+      [-HX + 2.1, -HX / 3, HX / 3, HX - 2.1].flatMap((x) => [[x, -HZ], [x, HZ]]).forEach(([x, z]) => { const sd = z < 0 ? -1 : 1; gAdd(g, fm, x, y0 + 1.8, z + sd * 0.19, 1.7, 1.3, 0.06); gAdd(g, glass, x, y0 + 1.8, z + sd * 0.23, 1.45, 1.05, 0.04); gAdd(g, fm, x, y0 + 1.8, z + sd * 0.26, 0.06, 1.05, 0.04); });
       gAdd(g, fm, -HX - 0.19, y0 + 1.8, 0, 0.06, 1.3, 1.7); gAdd(g, glass, -HX - 0.23, y0 + 1.8, 0, 0.04, 1.05, 1.45);
     }
     /* katlar arası döşeme (merdiven boşluklu) ve merdivenler */
-    const slabM = hm(0xc99a5c, { roughness: 0.7 }), stepA = hm(0xe0b074), stepB = hm(0xd6a15d), Z0 = 2.15, Z1 = 3.85, HX0 = -0.4, HX1 = 4.82, HL = -1.7;
+    const slabM = hm(0xc99a5c, { roughness: 0.7 }), stepA = hm(0xe0b074), stepB = hm(0xd6a15d), Z0 = HZ - 1.85, Z1 = HZ - 0.15, HX1 = HX - 0.18, HX0 = HX1 - 5.2, HL = HX0 - 1.3;
     for (let f = 1; f < floors; f++) {
       const top = Ly(f), bot = top - 0.35, north = (f - 1) % 2 === 0;
       const rects = north ? [[-HX, HX, -HZ, -Z1], [-HX, HL, -Z1, -Z0], [HX1, HX, -Z1, -Z0], [-HX, HX, -Z0, HZ]] : [[-HX, HX, -HZ, Z0], [-HX, HL, Z0, Z1], [HX1, HX, Z0, Z1], [-HX, HX, Z1, HZ]];
@@ -208,22 +217,22 @@ Home.rebuild = () => {
     const rugAt = (lx, lz, by, c1, c2) => { g.add(mesh(geo('cyl', 1.8, 1.8, 0.03, 20), hm(c1), lx, by + 0.02, lz)); g.add(mesh(geo('cyl', 1.15, 1.15, 0.035, 20), hm(c2), lx, by + 0.025, lz)); };
     const lampAt = (lx, lz, by) => { const l = new T.Group(); l.position.set(lx, by, lz); l.add(mesh(geo('cyl', 0.2, 0.25, 0.08, 8), dark, 0, 0.04, 0)); l.add(mesh(geo('cyl', 0.04, 0.04, 1.5, 6), dark, 0, 0.8, 0)); l.add(mesh(geo('cone', 0.4, 0.5, 10), new T.MeshBasicMaterial({ color: 0xffe9a0 }), 0, 1.7, 0)); shadowAll(l); g.add(l); };
     const pot = (lx, lz, by) => { const p = new T.Group(); p.position.set(lx, by, lz); p.add(mesh(geo('cyl', 0.3, 0.22, 0.45, 9), hm(0xc2693c), 0, 0.22, 0)); p.add(mesh(geo('blob', 0.5, 2), hm(0x3fae5a), 0, 0.85, 0)); p.add(mesh(geo('blob', 0.34, 3), hm(0x58c76a), 0.2, 1.25, 0.1)); shadowAll(p); g.add(p); };
-    if (it.bed) bed(-3.1, -1.9, FY, undefined, '🛏️ Yatağa Yat');
-    if (it.sofa) sofa(-0.6, 3.0, FY, false, undefined);
-    if (it.table) { const t = new T.Group(); t.position.set(1.4, FY, -0.7); gAdd(t, wood, 0, 0.85, 0, 1.9, 0.12, 1.15); [[-0.8, -0.45], [0.8, -0.45], [-0.8, 0.45], [0.8, 0.45]].forEach(([x, z]) => gAdd(t, dark, x, 0.42, z, 0.1, 0.84, 0.1)); t.add(mesh(geo('cyl', 0.2, 0.17, 0.05, 10), hm(0xffffff), -0.3, 0.94, 0)); t.add(mesh(geo('cyl', 0.07, 0.06, 0.12, 8), hm(0xff8fb1), 0.4, 0.97, 0.1)); shadowAll(t); g.add(t); col(0.4, 2.4, FY - 0.5, FY + 0.92, -1.3, -0.1); }
-    if (it.rug) rugAt(0.4, 0.5, FY, 0xb28bff, 0xffd23f);
-    if (it.lamp) lampAt(4.25, 1.9, FY);
-    if (it.shelf) { const sh = new T.Group(); sh.position.set(-4.55, FY, 2.0); gAdd(sh, wood, 0, 1.15, 0, 0.5, 2.3, 2.1); [0.55, 1.15, 1.75].forEach((y) => { for (let k = 0; k < 6; k++) gAdd(sh, hm([0xe05555, 0x4aa8ff, 0xf4c430, 0x4cc76a, 0xa56bff, 0xff8fb1][k]), 0.2, y + 0.2, -0.85 + k * 0.32, 0.22, 0.4, 0.22); }); shadowAll(sh); g.add(sh); col(-4.85, -4.25, FY - 0.5, FY + 2.3, 0.9, 3.1); }
-    if (it.plant) pot(3.7, 3.0, FY);
+    if (it.bed) bed(-HX + 1.9, -HZ + 2.1, FY, undefined, '🛏️ Yatağa Yat');
+    if (it.sofa) sofa(-1.5, HZ - 1.0, FY, false, undefined);
+    if (it.table) { const t = new T.Group(); t.position.set(2.0, FY, -0.7); gAdd(t, wood, 0, 0.85, 0, 1.9, 0.12, 1.15); [[-0.8, -0.45], [0.8, -0.45], [-0.8, 0.45], [0.8, 0.45]].forEach(([x, z]) => gAdd(t, dark, x, 0.42, z, 0.1, 0.84, 0.1)); t.add(mesh(geo('cyl', 0.2, 0.17, 0.05, 10), hm(0xffffff), -0.3, 0.94, 0)); t.add(mesh(geo('cyl', 0.07, 0.06, 0.12, 8), hm(0xff8fb1), 0.4, 0.97, 0.1)); shadowAll(t); g.add(t); col(1.0, 3.0, FY - 0.5, FY + 0.92, -1.3, -0.1); }
+    if (it.rug) rugAt(1.0, 0.5, FY, 0xb28bff, 0xffd23f);
+    if (it.lamp) lampAt(HX - 0.75, 2.4, FY);
+    if (it.shelf) { const sh = new T.Group(); sh.position.set(-HX + 0.45, FY, 3.0); gAdd(sh, wood, 0, 1.15, 0, 0.5, 2.3, 2.1); [0.55, 1.15, 1.75].forEach((y) => { for (let k = 0; k < 6; k++) gAdd(sh, hm([0xe05555, 0x4aa8ff, 0xf4c430, 0x4cc76a, 0xa56bff, 0xff8fb1][k]), 0.2, y + 0.2, -0.85 + k * 0.32, 0.22, 0.4, 0.22); }); shadowAll(sh); g.add(sh); col(-HX + 0.15, -HX + 0.75, FY - 0.5, FY + 2.3, 1.9, 4.1); }
+    if (it.plant) pot(HX - 1.3, HZ - 1.0, FY);
     /* 2. kat: yatak odası (pijama partisi için iki yatak), 3. kat: teras salonu (iki koltuk) */
     if (floors >= 2) {
       const by = Ly(1);
-      bed(-3.1, -1.9, by, by, '🛏️ Yatağa Yat (2. kat)'); bed(-3.1, 1.9, by, by, '🛏️ Yatağa Yat (2. kat)'); rugAt(1.2, 0.6, by, 0x7fd8ff, 0xffffff); lampAt(4.25, -3.2, by); pot(3.7, -1.0, by);
+      [[-HX + 1.9, -HZ + 2.1], [-HX + 1.9, HZ - 2.1], [-HX + 4.5, -HZ + 2.1], [-HX + 4.5, HZ - 2.1]].forEach(([bx, bz]) => bed(bx, bz, by, by, '🛏️ Yatağa Yat (2. kat)')); rugAt(2.0, 0, by, 0x7fd8ff, 0xffffff); lampAt(HX - 0.75, -1.5, by); pot(HX - 1.3, 1.0, by);
     }
     if (floors >= 3) {
       const by = Ly(2);
-      sofa(-3.15, 3.0, by, false, by); sofa(-3.15, -3.0, by, true, by); rugAt(1.0, -0.2, by, 0xffd23f, 0xff8fb1); lampAt(4.25, -3.2, by); lampAt(-4.4, 0.2, by);
-      const tb = new T.Group(); tb.position.set(1.4, by, -0.4); gAdd(tb, wood, 0, 0.7, 0, 1.4, 0.1, 1.0); [[-0.55, -0.35], [0.55, -0.35], [-0.55, 0.35], [0.55, 0.35]].forEach(([x, z]) => gAdd(tb, dark, x, 0.35, z, 0.08, 0.7, 0.08)); shadowAll(tb); g.add(tb); col(0.65, 2.15, by - 0.5, by + 0.76, -0.95, 0.15);
+      sofa(-HX + 2.3, HZ - 1.0, by, false, by); sofa(-HX + 2.3, -HZ + 1.0, by, true, by); sofa(-HX + 5.8, HZ - 1.0, by, false, by); sofa(-HX + 5.8, -HZ + 1.0, by, true, by); rugAt(-3.5, 0, by, 0xffd23f, 0xff8fb1); lampAt(HX - 0.75, -1.5, by); lampAt(-HX + 0.4, 0, by);
+      const tb = new T.Group(); tb.position.set(-3.5, by, -0.4); gAdd(tb, wood, 0, 0.7, 0, 1.4, 0.1, 1.0); [[-0.55, -0.35], [0.55, -0.35], [-0.55, 0.35], [0.55, 0.35]].forEach(([x, z]) => gAdd(tb, dark, x, 0.35, z, 0.08, 0.7, 0.08)); shadowAll(tb); g.add(tb); col(-4.25, -2.75, by - 0.5, by + 0.76, -0.95, 0.15);
     }
   }
 };
@@ -362,6 +371,7 @@ Home.openBuild = () => {
   const items = Object.entries(HOME_ITEMS).map(([id, it]) => { const own = !!H.items[id]; return `<button class="tile ${own ? 'on' : ''}" data-act="hitem" data-id="${id}"><span class="e">${it.icon}</span>${it.name}<br><small>${own ? '✓ Yerleşti • kaldır' : `${it.wood} 🪵`}</small></button>`; }).join('');
   showScreen(`<div class="panel">${closeBtn}<h2>🔨 Yapı Tezgahı</h2><p class="sub">🪵 Odunun: <b>${save.wood}</b> • Ağaçlara yaklaşıp 🪓 ile odun topla</p>${stages}
     ${st >= 1 ? `<h3 style="margin:12px 0 4px">🎨 Renkler</h3>${sw('wall')}${sw('roof')}${sw('door')}` : ''}
+    <h3 style="margin:12px 0 4px">📍 Evin yeri</h3><div class="grid tiles">${HOME_PLOTS.map((p, i) => `<button class="tile ${i === Home.plot ? 'on' : ''}" data-act="hplot" data-i="${i}"><span class="e">🏡</span>${p.name}<br><small>${i === Home.plot ? '✓ Burada' : 'Buraya taşın'}</small></button>`).join('')}</div>
     ${st >= 2 ? `<h3 style="margin:12px 0 4px">🛋️ Eşyalar</h3><div class="grid tiles">${items}</div><p class="note">Yatağa yatabilir, koltuğa oturabilirsin. Evde enerji dolar!</p>` : '<p class="note" style="margin-top:10px">Duvarlar bitince eşya yerleştirebilirsin.</p>'}</div>`, 'build');
 };
 Ex.acts.hbuild = () => {
@@ -383,7 +393,8 @@ Home.onWorld = (w) => {
   Ex.seat = null; Home.party = null; Home.cook = null; $('cookBar') && $('cookBar').classList.add('hidden');
   const wp = $('woodPill'); if (wp) wp.classList.toggle('hidden', w.id !== 'village');
   if (w.id !== 'village') { Home.w = null; return; }
-  Home.w = w; Home.solids = []; Home.grillT = 0; Home.campT = 0; Home.buildYard(w); Home.rebuild();
+  Home.setPlot(save.home.plot || 0); Home.clearGhosts(); Home.w = w; Home.solids = []; Home.grillT = 0; Home.campT = 0; Home.buildYard(w); Home.rebuild(); Home.buildMarkers(w);
+  if (Net.active) Net.send(Net.hello());
 };
 Home.update = (dt) => {
   const w = Home.w; if (!w || w !== G.world) return;
@@ -391,7 +402,7 @@ Home.update = (dt) => {
   gt.leaves.forEach(({ p, s }) => { p.rotation.y = s * gt.t * 1.65; }); gt.lock.visible = !open; gt.block.active = !open;
   if (Home.signG) Home.signG.text = open ? '🏡 Ev Arsanıza hoş geldin! Ağaç kes, evini kur, mangal yap.' : '🔒 Ev Arsası: 2 arkadaşını kurtarınca kapı açılır!';
   const wp = $('woodPill'); if (wp && wp.firstElementChild && wp.firstElementChild.textContent !== String(save.wood)) wp.firstElementChild.textContent = save.wood;
-  Home.updateTrees(dt); Home.updateCook(dt); Home.updateParty(dt);
+  Home.updateTrees(dt); Home.updateCook(dt); Home.updateParty(dt); Home.updateGhosts();
   if (Home.grillT > 0) Home.grillT -= dt; if (Home.campT > 0) Home.campT -= dt;
   const t = G.time, flick = (fl, on) => { fl.visible = on; if (on) fl.children.forEach((c, i) => { c.scale.set(1 + Math.sin(t * 13 + i * 2) * 0.18, 1 + Math.sin(t * 9 + i) * 0.3, 1 + Math.sin(t * 11 + i) * 0.18); }); };
   flick(Home.grillFlames, Home.grillT > 0); flick(Home.campFlames, Home.campT > 0);
@@ -408,4 +419,63 @@ Home.update = (dt) => {
   }
   Home.itx.forEach((it) => { if (it.base) it.label = Ex.seat ? '🧍 Kalk' : it.base; });
   if (Ex.seat) { const st = { x: Ex.seat.x, z: Ex.seat.z, r: 9, label: '🧍 Kalk', fn: () => Home.stand() }; G.interact = st; G.ui.setInteract(st); }
+};
+
+/* ---------- Arsa seçimi, boş arsa işaretleri ve arkadaşların evleri ---------- */
+const plotBusy = (i) => Net.active && [...Net.players.values()].some((p) => p.hs && p.hs.p === i && p.hs.s >= 1);
+Home.movePlot = (i) => {
+  const p = HOME_PLOTS[i]; if (!p || i === Home.plot) return;
+  if (!Ex.isOpen('home')) { G.ui.toast('🔒 Ev arsası: 2 arkadaşını kurtarınca açılır!'); return; }
+  if (plotBusy(i)) { G.ui.toast('🏡 Bu arsada arkadaşının evi var, başka arsa seç!'); return; }
+  save.home.plot = i; queueSave(); G.ui.toast(`📍 Evin artık ${p.name} arsasında!`, 'gold');
+  G.loadWorld('village', { pos: { x: p.x + 21, y: 3, z: p.z } });
+};
+Ex.acts.hplot = (d) => { closeScreen(); Home.movePlot(+d.i); };
+Home.buildMarkers = (w) => {
+  HOME_PLOTS.forEach((p, i) => {
+    if (i === Home.plot) return; const y = w.groundAt ? w.groundAt(p.x, p.z) : 0, g = new T.Group(); g.position.set(p.x, y, p.z);
+    g.add(mesh(geo('cyl', 0.1, 0.12, 4, 6), hm(0xe8e8f0), 0, 2, 0)); const f = mesh(geo('cone', 0.7, 1.3, 3), hm(0x7affd0, { emissive: 0x2a8a6a, emissiveIntensity: 0.4 }), 0.7, 3.5, 0); f.rotation.z = -Math.PI / 2; g.add(f);
+    g.add(mesh(geo('cyl', 3.2, 3.4, 0.12, 20), hm(0xd6c3a0), 0, 0.06, 0)); shadowAll(g); w.group.add(g);
+    addSign(w, p.x + 2.4, y, p.z + 2.4, `🏡 ${p.name} arsası: ${plotBusy(i) ? 'arkadaşının evi var' : 'boş. Dokun, evini buraya taşı!'}`);
+    w.interacts.push({ x: p.x, z: p.z, r: 3.4, label: `📍 Evimi buraya taşı (${p.name})`, fn: () => Home.movePlot(i) });
+  });
+};
+Home.pubInfo = () => ({ p: save.home.plot || 0, s: save.home.stage | 0, w: save.home.wall, r: save.home.roof, d: save.home.door });
+Home.cleanInfo = (h) => {
+  if (!h || typeof h !== 'object') return null; const pick1 = (k, v) => (HOME_PAL[k][v] ? v : Object.keys(HOME_PAL[k])[0]);
+  return { p: clamp(h.p | 0, 0, HOME_PLOTS.length - 1), s: clamp(h.s | 0, 0, 5), w: pick1('wall', h.w), r: pick1('roof', h.r), d: pick1('door', h.d) };
+};
+Home.ghosts = new Map();
+Home.clearGhosts = () => { Home.ghosts.forEach((g) => { if (g.label) Labels.remove(g.label); }); Home.ghosts = new Map(); };
+Home.dropGhost = (id) => {
+  const g = Home.ghosts.get(id); if (!g) return; const w = Home.w;
+  if (w) { w.group.remove(g.grp); const si = w.signs.indexOf(g.sign); if (si >= 0) w.signs.splice(si, 1); g.solids.forEach((s) => { const k = w.solids.indexOf(s); if (k >= 0) w.solids.splice(k, 1); }); }
+  if (g.label) Labels.remove(g.label); Home.ghosts.delete(id);
+};
+Home.buildGhost = (id, p) => {
+  const w = Home.w, hs = p.hs, pl = HOME_PLOTS[hs.p], O = { x: pl.x - 6, z: pl.z }, HX = Home.HX, HZ = Home.HZ, FY = Home.FY, WH = 3.2, FHt = Home.FH, floors = hs.s >= 5 ? 3 : hs.s >= 4 ? 2 : 1;
+  const grp = new T.Group(); grp.position.set(O.x, 0, O.z); w.group.add(grp); const solids = [];
+  gAdd(grp, hm(0xc99a5c), 0, FY - 0.2, 0, 2 * HX + 0.9, 0.4, 2 * HZ + 0.9);
+  let top = FY + 0.5;
+  if (hs.s >= 2) {
+    const wm = hm(HOME_PAL.wall[hs.w] || 0xfff0d6);
+    for (let f = 0; f < floors; f++) { const y0 = FY + f * FHt; gAdd(grp, wm, 0, y0 + WH / 2, 0, 2 * HX, WH, 2 * HZ); }
+    gAdd(grp, hm(HOME_PAL.door[hs.d] || 0x4aa8ff), HX + 0.05, FY + 1.3, 0, 0.2, 2.6, 2.2);
+    [-HX + 2.1, -HX / 3, HX / 3, HX - 2.1].forEach((x) => { for (let f = 0; f < floors; f++) { gAdd(grp, hm(0xbfe6ff, { emissive: 0x3a6a88, emissiveIntensity: 0.35 }), x, FY + f * FHt + 1.8, HZ + 0.03, 1.45, 1.05, 0.06); gAdd(grp, hm(0xbfe6ff, { emissive: 0x3a6a88, emissiveIntensity: 0.35 }), x, FY + f * FHt + 1.8, -HZ - 0.03, 1.45, 1.05, 0.06); } });
+    top = FY + (floors - 1) * FHt + WH;
+  }
+  if (hs.s >= 3) { const rm = hm(HOME_PAL.roof[hs.r] || 0xd9534f, { flatShading: true }), body = mesh(geo('cone', 1, 1, 4), rm, 0, top + 1.75, 0); body.rotation.y = Math.PI / 4; body.scale.set((2 * HX + 1.9) / 2 / 0.7071, 3.5, (2 * HZ + 1.9) / 2 / 0.7071); grp.add(body); top += 3.5; }
+  shadowAll(grp); solids.push(aabb(w, null, O.x - HX, O.x + HX, -1, top, O.z - HZ, O.z + HZ));
+  addSign(w, O.x + HX + 2.5, 0, O.z + HZ - 1, `🏡 ${p.name}'in evi`); const sign = w.signs[w.signs.length - 1];
+  const label = Labels.make(`🏡 ${p.name}`, ''); label.getPos = (v) => v.set(O.x, top + 1.6, O.z);
+  Home.ghosts.set(id, { grp, solids, sign, label, sig: JSON.stringify(hs) });
+};
+Home.updateGhosts = () => {
+  if (!Home.w || !Net.active) { if (Home.ghosts.size) { [...Home.ghosts.keys()].forEach(Home.dropGhost); } return; }
+  const seen = new Set();
+  Net.players.forEach((p, id) => {
+    if (!p.hs || p.hs.s < 1 || p.hs.p === Home.plot) return; seen.add(id);
+    const g = Home.ghosts.get(id); if (g && g.sig === JSON.stringify(p.hs)) return; if (g) Home.dropGhost(id); Home.buildGhost(id, p);
+  });
+  [...Home.ghosts.keys()].forEach((id) => { if (!seen.has(id)) Home.dropGhost(id); });
 };

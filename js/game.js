@@ -561,6 +561,7 @@ function updateWorld(dt) {
   for (const c of w.cages) {
     if (c.hop) { c.t += dt; c.creature.position.y = 0.05 + Math.abs(Math.sin(c.t * 7)) * 0.9 * Math.max(0, 1 - c.t / 2); c.creature.rotation.y += dt * 4; if (c.t > 4) { c.hop = false; c.mesh.visible = false; } }
     if (c.freed) continue;
+    if (c.lockFn) { const lk = c.lockFn(); c.mesh.visible = !lk; if (lk) continue; }
     const boss = c.needBoss && w.boss && w.boss.alive; if (c.lock) c.lock.visible = !!boss;
     animCreature(c.creature, t, 'idle', 0.6);
     if (Math.hypot(p.x - c.x, p.z - c.z) < 2.4 && Math.abs(p.y - c.y) < 2.5) {

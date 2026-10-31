@@ -106,7 +106,7 @@ const ui = (G.ui = {
     if (G.mode === 'title') return; G.mode = 'wardrobe'; G.paused = true; ui.wcat = cat; const sh = SHOP[cat];
     const tabs = Object.entries(SHOP).map(([k, v]) => `<button class="tab ${k === cat ? 'on' : ''}" data-act="wtab" data-c="${k}">${v.icon} ${v.label}</button>`).join('');
     const items = sh.items.map((it) => { const own = isOwned(cat, it.id), sel = save.equip[cat] === it.id;
-      return `<button class="item ${sel ? 'sel' : ''} ${own ? '' : 'lock'}" data-act="wpick" data-c="${cat}" data-i="${it.id}"><span class="e">${it.icon}</span>${it.name}<span class="p">${sel ? '✔ Giyili' : own ? 'Senin' : it.price + ' 🪙'}</span></button>`; }).join('');
+      return `<button class="item ${sel ? 'sel' : ''} ${own ? '' : 'lock'}" data-act="wpick" data-c="${cat}" data-i="${it.id}"><span class="e">${it.icon}</span>${it.name}<span class="p">${sel ? '✔ Giyili' : own ? 'Senin' : it.price ? it.price + ' 🪙' : 'Bedava'}</span></button>`; }).join('');
     cam.yaw = P.yaw + 0.35; Sfx.play('click');
     scrEl.className = 'side clear'; scrEl.innerHTML = `<div class="panel" style="width:min(430px,100%)">${closeBtn}<h2>👗 Gardırop</h2><p class="sub">🪙 ${save.coins} • ${esc(save.name)} için stil seç!</p><div class="tabs">${tabs}</div><div class="items">${items}</div>
       <p class="note" style="margin-top:12px">📏 Boyut</p>${sizeBox()}
@@ -158,6 +158,7 @@ const ui = (G.ui = {
       const list = [`🐼 ${esc(save.name)} (sen)`, ...[...Net.players.values()].map((p) => `🐼 ${esc(p.name)}`)].map((x) => `<div class="pill small" style="margin:3px">${x}</div>`).join('');
       body = `<p class="note">Arkadaşların bu kodu "Odaya Katıl" kısmına yazsın:</p><div class="code">${Net.code}</div><div class="row">${list}</div>
         ${st === 'reconnecting' ? '<p class="note">🔄 Bağlantı yeniden kuruluyor… Odadan ayrılmadın, biraz bekle.</p>' : ''}<p class="note">💬 Yazmak için ekranın sağındaki 💬 düğmesine (ya da Enter tuşuna) bas. 🎙️ düğmesi mikrofonu açıp kapatır.</p><p class="note">${Net.isHost ? 'Sen odanın sahibisin. En fazla 15 kişi oynayabilir. Sesli sohbette ilk 8 kişiyle bağlanılır. Sen oyundan çıkarsan oda kapanır.' : 'Odaya bağlandın!'} Selam vermek için ekranın sağ üstündeki 😊 düğmesini kullan. Arkadaşının adına dokunarak yanına gidebilirsin. Başka uygulamaya geçersen odada kalırsın; 45 saniye boyunca 💤 olarak görünürsün ve geri dönünce bağlantı otomatik kurulur.</p>
+        <div class="tabs" style="margin:8px 0"><button class="tab ${save.settings.follow !== false ? 'on' : ''}" data-act="togfollow">🌍 Birlikte gez: ${save.settings.follow !== false ? 'Açık' : 'Kapalı'}</button></div><p class="note">Birlikte gez açıkken biri portala girince herkes aynı dünyaya gider; böylece hep aynı ekranı görürsünüz.</p>
         <button class="btn small coral" data-act="mpleave">🚪 Odadan Ayrıl</button>`;
     } else {
       body = `<p class="note">Oyuncu adı</p><input type="text" id="nameIn" maxlength="12" value="${esc(save.name)}"><br><br>
@@ -200,7 +201,7 @@ const ACT = {
   play: () => startPlaying(),
   startgame: () => { save.intro = true; queueSave(); closeScreen(); },
 };
-const saveLink = () => `${location.origin}${location.pathname}#kod=${exportCode()}`;
+const saveLink = () => `${location.origin}${location.pathname}#kod=${fullCode()}`;
 function copyText(text, msg) {
   const done = () => ui.toast(msg);
   const fallback = () => { const t = document.createElement('textarea'); t.value = text; t.style.cssText = 'position:fixed;left:-999px;top:0'; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) { ui.toast('⚠️ Kopyalanamadı. Kodu elle yaz: ' + text.slice(0, 24) + '…'); } t.remove(); };

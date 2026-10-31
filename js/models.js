@@ -29,6 +29,7 @@ const geo = (kind, ...a) => {
   return geoCache.get(key);
 };
 const mesh = (g, m, x = 0, y = 0, z = 0) => { const o = new T.Mesh(g, m); o.position.set(x, y, z); return o; };
+const chain = (o, k, ax, v) => { o[k][ax] = v; return o; };
 const shadowAll = (obj, cast = true, recv = false) => { obj.traverse((c) => { if (c.isMesh) { c.castShadow = cast; c.receiveShadow = recv; } }); return obj; };
 
 /* ---------- Mochi (daha gerçekçi: tüylü doku, pürüzsüz yüzeyler, parlak gözler, panda yüz yapısı) ---------- */
@@ -82,9 +83,10 @@ function setEquip(p, e) {
   u.mW.color.setHex(fur.body); u.mB.color.setHex(fur.accent);
   clearGroup(u.accBody); clearGroup(u.accHead); u.flame = null;
   const hat = buildHat(e.hat), gl = buildGlasses(e.glasses), sc = buildScarf(e.scarf), pk = buildPack(e.pack, u);
+  const of = buildOutfit(e.outfit); if (of) u.accBody.add(of);
   if (hat) u.accHead.add(hat); if (gl) u.accHead.add(gl); if (sc) u.accBody.add(sc); if (pk) u.accBody.add(pk);
   shadowAll(u.accBody); shadowAll(u.accHead); ownMats(p);
-  u.equip = { ...e };
+  u.equip = { ...e }; if (G.looks) G.looks.applyForm(p, e.form || 'panda');
 }
 /* Paylaşılan (önbellekli) malzemeleri kopyalar; böylece saydamlık sadece bu modeli etkiler */
 function ownMats(obj) {
@@ -116,6 +118,15 @@ function buildHat(id) {
     case 'astro': g.add(mesh(geo('sph', 0.78, 14, 10), M(0x9fe6ff, { transparent: true, opacity: 0.28 }), 0, 0.02, 0));
       g.add(mesh(geo('tor', 0.66, 0.07, 16), M(0xe8e8f0), 0, -0.4, 0)).rotation.x = Math.PI / 2; return g;
     case 'flower': for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2; g.add(mesh(geo('sph', 0.1, 6, 6), M([0xff7eb6, 0xffd23f, 0xffffff][i % 3]), Math.sin(a) * 0.42, 0.42 + (i % 2) * 0.05, Math.cos(a) * 0.42)); } return g;
+    case 'chef': g.add(mesh(geo('cyl', 0.36, 0.33, 0.5, 14), M(0xffffff), 0, 0.72, 0)); [[0, 1.05, 0], [0.22, 1.0, 0.1], [-0.22, 1.0, 0.1], [0, 1.0, -0.2]].forEach(([a, b, c]) => g.add(mesh(geo('sph', 0.24, 10, 8), M(0xffffff), a, b, c))); return g;
+    case 'cap': { const h = mesh(geo('half', 0.57), M(0xe0453c), 0, 0.36, 0); g.add(h); const v = mesh(geo('box', 0.5, 0.04, 0.36), M(0xc2352e), 0, 0.48, 0.52); v.rotation.x = 0.12; g.add(v); g.add(mesh(geo('sph', 0.06, 6, 6), M(0xffffff), 0, 0.93, 0)); return g; }
+    case 'catears': [-1, 1].forEach((s) => { g.add(chain(mesh(geo('cone', 0.17, 0.36, 4), M(0x2b2b33), s * 0.34, 0.66, 0), 'rotation', 'z', -s * 0.25)); g.add(chain(mesh(geo('cone', 0.1, 0.22, 4), M(0xff9db4), s * 0.34, 0.62, 0.05), 'rotation', 'z', -s * 0.25)); }); return g;
+    case 'bunny': [-1, 1].forEach((s) => { const e = mesh(geo('sph', 0.13, 8, 6), M(0xf4f0ea), s * 0.2, 1.0, 0); e.scale.set(1, 3.3, 0.6); e.rotation.z = -s * 0.2; g.add(e); const i = mesh(geo('sph', 0.08, 6, 6), M(0xffb6c8), s * 0.2, 1.0, 0.04); i.scale.set(0.8, 3, 0.4); i.rotation.z = -s * 0.2; g.add(i); }); return g;
+    case 'beanie': g.add(mesh(geo('half', 0.58), M(0x3a78d8), 0, 0.36, 0)); g.add(chain(mesh(geo('tor', 0.5, 0.09, 12), M(0x2a5aa8), 0, 0.4, 0), 'rotation', 'x', Math.PI / 2)); g.add(mesh(geo('sph', 0.14, 8, 6), M(0xffffff), 0, 0.98, 0)); return g;
+    case 'headphones': for (let i = 0; i <= 6; i++) { const a = -1.35 + (i / 6) * 2.7; g.add(chain(mesh(geo('box', 0.07, 0.07, 0.11), M(0x2b2b33), Math.sin(a) * 0.6, 0.02 + Math.cos(a) * 0.6, 0), 'rotation', 'z', -a)); }
+      [-1, 1].forEach((s) => { const c = mesh(geo('cyl', 0.2, 0.2, 0.14, 12), M(0xe0453c), s * 0.58, 0.02, 0); c.rotation.z = Math.PI / 2; g.add(c); }); return g;
+    case 'santa': { const c = mesh(geo('cone', 0.42, 0.85, 12), M(0xd62f2f), 0.08, 0.9, 0); c.rotation.z = -0.25; g.add(c); g.add(chain(mesh(geo('tor', 0.42, 0.1, 12), M(0xffffff), 0, 0.48, 0), 'rotation', 'x', Math.PI / 2)); g.add(mesh(geo('sph', 0.13, 8, 6), M(0xffffff), 0.27, 1.28, 0)); return g; }
+    case 'unicorn': { const h = mesh(geo('cone', 0.12, 0.7, 8), M(0xfff1c2, { emissive: 0xffd86b, emissiveIntensity: 0.25 }), 0, 0.92, 0.22); h.rotation.x = 0.35; g.add(h); [-1, 1].forEach((s) => g.add(chain(mesh(geo('cone', 0.13, 0.3, 4), M(0xf4e8ff), s * 0.3, 0.62, -0.02), 'rotation', 'z', -s * 0.2))); return g; }
     default: return null;
   }
 }
@@ -125,11 +136,16 @@ function buildGlasses(id) {
   if (id === 'heart') { [-1, 1].forEach((s) => { const l = mesh(geo('oct', 0.17), M(0xff4d8d), s * 0.2, 0, 0.0); l.scale.set(1.1, 1, 0.3); g.add(l); }); return g; }
   if (id === 'star') { [-1, 1].forEach((s) => { const l = mesh(geo('oct', 0.19), M(0xffd23f), s * 0.2, 0, 0.0); l.scale.set(1, 1, 0.3); l.rotation.z = Math.PI / 4; g.add(l); }); return g; }
   if (id === 'nerd') { [-1, 1].forEach((s) => g.add(mesh(geo('tor', 0.15, 0.028, 14), M(0x222222), s * 0.2, 0, 0))); g.add(mesh(geo('box', 0.1, 0.025, 0.025), M(0x222222), 0, 0.03, 0)); return g; }
+  if (id === 'round') { [-1, 1].forEach((s) => g.add(mesh(geo('tor', 0.17, 0.03, 14), M(0x3a78d8), s * 0.21, 0, 0))); g.add(mesh(geo('box', 0.1, 0.025, 0.025), M(0x3a78d8), 0, 0.03, 0)); return g; }
+  if (id === 'ski') { const b = mesh(geo('box', 0.7, 0.26, 0.1), M(0xff8a2a), 0, 0, 0.0); g.add(b); [-1, 1].forEach((s) => { const l = mesh(geo('sph', 0.15, 8, 6), M(0x1a1a22, { roughness: 0.1, metalness: 0.4 }), s * 0.18, 0, 0.05); l.scale.set(1.2, 0.9, 0.4); g.add(l); }); return g; }
+  if (id === 'mustache') { g.position.set(0, -0.12, 0.54); [-1, 1].forEach((s) => { const m = mesh(geo('sph', 0.12, 8, 6), M(0x4a2a14), s * 0.12, 0, 0); m.scale.set(1.4, 0.6, 0.7); m.rotation.z = -s * 0.35; g.add(m); }); return g; }
   return null;
 }
 function buildScarf(id) {
   if (id === 'none' || !id) return null;
-  const g = new T.Group(); const cols = id === 'rainbow' ? [0xff4d4d, 0xffc83a, 0x4ad66d, 0x3a8dff] : [id === 'blue' ? 0x3a8dff : 0xff4d4d];
+  if (id === 'bow') { const g = new T.Group(); [-1, 1].forEach((s) => { const w = mesh(geo('cone', 0.2, 0.34, 3), M(0xff6fb5), s * 0.2, 0.84, 0.5); w.rotation.z = s * Math.PI / 2; g.add(w); }); g.add(mesh(geo('sph', 0.08, 8, 6), M(0xe0509a), 0, 0.84, 0.52)); return g; }
+  if (id === 'gold') { const g = new T.Group(), t = mesh(geo('tor', 0.44, 0.1, 14), M(0xffc83a, { metalness: 0.6, roughness: 0.3, emissive: 0x7a5a10, emissiveIntensity: 0.3 }), 0, 0.84, 0); t.rotation.x = Math.PI / 2; g.add(t); g.add(mesh(geo('sph', 0.1, 8, 6), M(0xff4d6d), 0, 0.78, 0.46)); return g; }
+  const g = new T.Group(); const cols = id === 'rainbow' ? [0xff4d4d, 0xffc83a, 0x4ad66d, 0x3a8dff] : id === 'stripe' ? [0xe0453c, 0xffffff, 0xe0453c] : [id === 'blue' ? 0x3a8dff : 0xff4d4d];
   cols.forEach((c, i) => { const t = mesh(geo('tor', 0.44, 0.1, 14), M(c), 0, 0.84 - i * 0.04 * (cols.length > 1 ? 1 : 0), 0); t.rotation.x = Math.PI / 2; t.scale.set(1, 0.95, 1); g.add(t); });
   const tail = mesh(geo('box', 0.2, 0.55, 0.07), M(cols[cols.length - 1]), 0.28, 0.52, 0.4); tail.rotation.z = 0.15; g.add(tail);
   return g;
@@ -143,6 +159,30 @@ function buildPack(id, u) {
   if (id === 'rocket') { [-1, 1].forEach((s) => g.add(mesh(geo('cyl', 0.14, 0.14, 0.8), M(0xcfd3dc), s * 0.2, 0, 0)));
     [-1, 1].forEach((s) => g.add(mesh(geo('cone', 0.14, 0.25), M(0xe0533d), s * 0.2, 0.52, 0)));
     const f = mesh(geo('cone', 0.12, 0.4), M(0xffa21a, { transparent: true, opacity: 0.9 }), 0, -0.55, 0); f.rotation.x = Math.PI; f.visible = false; g.add(f); u.flame = f; }
+  if (id === 'angel') { [-1, 1].forEach((s) => { const w = mesh(geo('cone', 0.5, 1.25, 4), M(0xffffff, { emissive: 0xfff6c8, emissiveIntensity: 0.25 }), s * 0.6, 0.3, -0.05); w.rotation.z = -s * 1.0; w.rotation.x = 0.2; w.scale.z = 0.22; g.add(w); }); g.add(chain(mesh(geo('tor', 0.3, 0.04, 10), M(0xffe27a, { emissive: 0xffc800, emissiveIntensity: 0.6 }), 0, 1.1, 0.4), 'rotation', 'x', Math.PI / 2)); }
+  if (id === 'butterfly') { [[1, 0.55, 0xff7ad9], [-1, 0.55, 0xff7ad9], [1, -0.1, 0xb28bff], [-1, -0.1, 0xb28bff]].forEach(([s, y, c]) => { const w = mesh(geo('sph', 0.42, 8, 6), M(c, { transparent: true, opacity: 0.88 }), s * 0.5, y, -0.05); w.scale.set(1, 0.9, 0.12); g.add(w); }); }
+  if (id === 'jet') { g.add(mesh(geo('box', 0.62, 0.7, 0.3), M(0x4a78d0))); [-1, 1].forEach((s) => { g.add(mesh(geo('cyl', 0.13, 0.15, 0.3), M(0xcfd3dc), s * 0.2, -0.5, 0)); const f = mesh(geo('cone', 0.11, 0.35), M(0x7fd8ff, { transparent: true, opacity: 0.85 }), s * 0.2, -0.78, 0); f.rotation.x = Math.PI; g.add(f); }); }
+  return g;
+}
+function buildOutfit(id) {
+  if (!id || id === 'none') return null;
+  const g = new T.Group();
+  const sh = (c, y, sy, r = 0.585, o = {}) => { const k = mesh(geo('sph', r, 22, 16), M(c, o), 0, y, 0); k.scale.set(0.96, sy, 0.88); g.add(k); return k; };
+  switch (id) {
+    case 'tshirt': sh(0xe8453c, 0.62, 0.62); g.add(chain(mesh(geo('oct', 0.13), M(0xffe24a), 0, 0.64, 0.5), 'scale', 'z', 0.3)); break;
+    case 'hoodie': sh(0x3a78d8, 0.6, 0.72); g.add(mesh(geo('box', 0.34, 0.15, 0.05), M(0x2a5aa8), 0, 0.38, 0.5)); { const h = mesh(geo('sph', 0.34, 12, 10), M(0x3a78d8), 0, 1.0, -0.32); h.scale.set(1.2, 0.8, 0.8); g.add(h); } [-1, 1].forEach((s) => g.add(mesh(geo('cyl', 0.02, 0.02, 0.3, 5), M(0xffffff), s * 0.1, 0.8, 0.5))); break;
+    case 'dress': sh(0xff8fc0, 0.72, 0.5); { const k = mesh(geo('cone', 0.8, 0.75, 18), M(0xff8fc0), 0, 0.3, 0); g.add(k); g.add(chain(mesh(geo('tor', 0.78, 0.05, 8), M(0xffffff), 0, -0.05, 0), 'rotation', 'x', Math.PI / 2)); } g.add(mesh(geo('sph', 0.07, 6, 6), M(0xffe24a), 0, 0.75, 0.52)); break;
+    case 'cape': { const c = mesh(geo('box', 0.95, 1.15, 0.05), M(0xd62f2f), 0, 0.5, -0.5); c.rotation.x = 0.12; g.add(c); g.add(chain(mesh(geo('tor', 0.4, 0.07, 10), M(0xffc83a), 0, 0.98, 0), 'rotation', 'x', Math.PI / 2)); g.add(mesh(geo('oct', 0.1), M(0xffe24a), 0, 0.92, 0.42)); break; }
+    case 'overall': sh(0x2f6fd0, 0.42, 0.7); [-1, 1].forEach((s) => { g.add(mesh(geo('box', 0.08, 0.5, 0.05), M(0x2f6fd0), s * 0.2, 0.98, 0.48)); g.add(mesh(geo('sph', 0.04, 6, 5), M(0xffd23f), s * 0.2, 0.78, 0.52)); }); g.add(mesh(geo('box', 0.3, 0.2, 0.04), M(0x2558a8), 0, 0.42, 0.52)); break;
+    case 'astro': sh(0xf2f4f8, 0.55, 0.92); g.add(mesh(geo('box', 0.32, 0.22, 0.05), M(0x9aa4b8), 0, 0.62, 0.5)); [[-0.08, 0xff4d4d], [0.08, 0x4ad66d]].forEach(([x, c]) => g.add(mesh(geo('sph', 0.04, 6, 5), M(c, { emissive: c, emissiveIntensity: 0.6 }), x, 0.64, 0.54))); g.add(chain(mesh(geo('tor', 0.56, 0.05, 10), M(0x3a78d8), 0, 0.28, 0), 'rotation', 'x', Math.PI / 2)); break;
+    case 'tutu': sh(0xffffff, 0.62, 0.45); for (let i = 0; i < 14; i++) { const a = (i / 14) * 6.283, c = mesh(geo('cone', 0.16, 0.5, 4), M(0xff9ad5), Math.sin(a) * 0.5, 0.3, Math.cos(a) * 0.46); c.rotation.set(Math.cos(a) * 1.2, 0, -Math.sin(a) * 1.2); g.add(c); } break;
+    case 'robe': { const k = mesh(geo('cone', 0.86, 1.25, 16), M(0x5b3fd1), 0, 0.5, 0); g.add(k); for (let i = 0; i < 5; i++) { const a = i * 1.26; g.add(mesh(geo('oct', 0.07), M(0xffe24a, { emissive: 0xffc800, emissiveIntensity: 0.5 }), Math.sin(a) * 0.5, 0.25 + (i % 3) * 0.2, Math.cos(a) * 0.5)); } g.add(chain(mesh(geo('tor', 0.52, 0.06, 10), M(0xffc83a), 0, 0.62, 0), 'rotation', 'x', Math.PI / 2)); break; }
+    case 'pirate': sh(0x2a2a32, 0.6, 0.78); g.add(chain(mesh(geo('tor', 0.56, 0.07, 10), M(0xd62f2f), 0, 0.3, 0), 'rotation', 'x', Math.PI / 2)); [0.5, 0.65, 0.8].forEach((y) => g.add(mesh(geo('sph', 0.04, 6, 5), M(0xffc83a), 0, y, 0.55))); break;
+    case 'jersey': sh(0xffd23f, 0.62, 0.62); [0.5, 0.74].forEach((y) => g.add(chain(mesh(geo('tor', 0.56, 0.04, 10), M(0x3a78d8), 0, y, 0), 'rotation', 'x', Math.PI / 2))); g.add(mesh(geo('box', 0.2, 0.26, 0.04), M(0x3a78d8), 0, 0.62, 0.52)); break;
+    case 'apron': g.add(mesh(geo('box', 0.66, 0.8, 0.05), M(0xffffff), 0, 0.5, 0.5)); g.add(mesh(geo('box', 0.3, 0.16, 0.04), M(0xe8e8ee), 0, 0.38, 0.54)); g.add(chain(mesh(geo('tor', 0.4, 0.03, 8), M(0xffffff), 0, 0.92, 0), 'rotation', 'x', Math.PI / 2)); break;
+    case 'rain': sh(0xffc928, 0.6, 0.86, 0.6); { const h = mesh(geo('sph', 0.34, 12, 10), M(0xffc928), 0, 1.0, -0.3); h.scale.set(1.2, 0.85, 0.8); g.add(h); } [0.45, 0.65, 0.85].forEach((y) => g.add(mesh(geo('sph', 0.04, 6, 5), M(0x2a2a32), 0, y, 0.56))); break;
+    default: return null;
+  }
   return g;
 }
 
@@ -269,19 +309,19 @@ const VEH_COLORS = [
 const VEH_PRIMARY = { skate: [0x3f8de0], inline: [0xe0533d, 0xff4d6d], scooter: [0xff6f61], bike: [0x2a9dff], car: [0xff4a43] };
 const vehStyle = () => (save.vstyle || (save.vstyle = { size: 1, color: 'def' }));
 const vehSize = () => clamp(vehStyle().size || 1, 0.5, 2.5);
-function styleVehicle(g, kind) {
-  const st = vehStyle(), col = VEH_COLORS.find((c) => c.id === st.color); g.scale.setScalar(vehSize());
+function styleVehicle(g, kind, style) {
+  const st = style || vehStyle(), col = VEH_COLORS.find((c) => c.id === st.color); g.scale.setScalar(clamp(st.size || 1, 0.5, 2.5));
   if (col && col.c !== null) g.traverse((o) => { if (o.isMesh && o.material && VEH_PRIMARY[kind].some((h) => o.material.color.equals(new T.Color(h)))) o.material.color.setHex(col.c); });
 }
-function setVehicle(p, id) {
-  const u = p.userData; if (u.veh) { p.remove(u.veh); u.veh = null; } u.vehId = id || null;
+function setVehicle(p, id, style) {
+  const u = p.userData; if (u.veh) { p.remove(u.veh); u.veh = null; } u.vehId = id || null; u.vsize = clamp((style || vehStyle()).size || 1, 0.5, 2.5); u.vcol = (style || vehStyle()).color;
   if (!id) { if (u.body) { u.body.position.z = 0; } return; }
-  u.veh = makeVehicle(id); styleVehicle(u.veh, id); p.add(u.veh);
+  u.veh = makeVehicle(id); styleVehicle(u.veh, id, style); p.add(u.veh);
 }
 /* sürücü duruşu: tekerlekleri döndürür, gövdeyi araca oturtur/oturtur */
 function applyRiderPose(p, id, speed, dt, t) {
   const u = p.userData, v = VEH[id]; if (!v) return;
-  const vs = vehSize(); u.body.position.y += v.lift * vs; u.body.position.z = v.z * vs;
+  const vs = u.vsize || vehSize(); u.body.position.y += v.lift * vs; u.body.position.z = v.z * vs;
   if (v.sit) { u.legL.rotation.x = -1.15; u.legR.rotation.x = -1.15; u.armL.rotation.x = -0.95; u.armR.rotation.x = -0.95; u.armL.rotation.z = -0.22; u.armR.rotation.z = 0.22; }
   else if (v.hold) { u.armL.rotation.x = -0.85; u.armR.rotation.x = -0.85; u.armL.rotation.z = -0.18; u.armR.rotation.z = 0.18; u.legL.rotation.x = 0.1; u.legR.rotation.x = -0.15; }
   else { u.legL.rotation.x = 0.12; u.legR.rotation.x = -0.1; u.armL.rotation.z = -0.55 + Math.sin(t * 3) * 0.08; u.armR.rotation.z = 0.55 - Math.sin(t * 3) * 0.08; u.armL.rotation.x = 0; u.armR.rotation.x = 0; }
