@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#7fd3ff">
+<title>Mochi'nin Panda Köyü</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="labels"></div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="hud-left">
+    <div class="pill" id="coins"><span class="coin-ico"></span><b id="coinCount">0</b></div>
+  </div>
+  <div id="hud-top">
+    <div class="pill" id="worldName"></div>
+    <div class="pill small" id="friendsCount"></div>
+  </div>
+  <div id="hud-right">
+    <button class="round-btn" id="btnBag" aria-label="Çanta">🎒</button>
+    <button class="round-btn hidden" id="btnMic" aria-label="Mikrofon">🎙️</button>
+    <button class="round-btn hidden" id="btnChat" aria-label="Sohbet">💬</button>
+    <button class="round-btn" id="btnEmote" aria-label="Selam ver">😊</button>
+    <button class="round-btn" id="btnQuests" aria-label="Günlük görevler">📋<i class="badge hidden" id="questBadge"></i></button>
+    <button class="round-btn" id="btnMute" aria-label="Ses">🔊</button>
+    <button class="round-btn" id="btnMenu" aria-label="Menü">☰</button>
+  </div>
+  <div id="emoteRow" class="hidden"></div>
+  <div id="mpList"></div>
+  <div id="bossBar" class="hidden"><span id="bossName"></span><div class="bar"><i id="bossFill"></i></div></div>
+  <div id="abilityBar"></div>
+  <button id="interactBtn" class="btn hidden"></button>
+  <div id="hint" class="hidden"></div>
+</div>
+
+<!-- Dokunmatik kontroller -->
+<div id="touch" class="hidden">
+  <div id="stickZone"><div id="stickBase"><div id="stickKnob"></div></div></div>
+  <div id="actions">
+    <button class="act big" id="tJump">⬆</button>
+    <button class="act hidden" id="tRoll">🌀</button>
+    <button class="act hidden" id="tSprint">⚡</button>
+    <button class="act hidden" id="tInvis">👻</button>
+    <button class="act hidden" id="tFly">🪽</button>
+  </div>
+</div>
+
+<div id="chatLog"></div>
+<form id="chatForm" class="hidden" autocomplete="off"><input type="text" id="chatInput" maxlength="80" placeholder="Bir şey yaz…"><button class="btn small" type="submit">Gönder</button></form>
+<div id="toasts"></div>
+<div id="dialog" class="hidden"><div id="dlgIcon"></div><div><b id="dlgName"></b><p id="dlgText"></p></div></div>
+<div id="fade"></div>
+
+<!-- Paneller -->
+<div id="screen" class="hidden"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="js/core.js"></script>
+<script src="js/models.js"></script>
+<script src="js/worlds.js"></script>
+<script src="js/worlds2.js"></script>
+<script src="js/game.js"></script>
+<script src="js/net.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
