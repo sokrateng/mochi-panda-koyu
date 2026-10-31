@@ -39,3 +39,10 @@ Sonra `http://localhost:3000` adresini aç. 3B kütüphane (three.js) ve PeerJS 
 - 🏡 **Ev Arsası** (köyün güneybatısı): ağaç kes 🪓, odun topla 🪵, Yapı Tezgahı'nda evi temel-duvar-çatı olarak kur, renkleri seç, eşya yerleştir. Koltuğa otur, yatağa yat (enerji dolar).
 - 🍖 **Mangal ve kamp ateşi**: yemek pişir, çantana koy, yiyince ekstra enerji ve hızlı koşu. Evi bitirince kamp ateşinde **pijama partisi** yap.
 - 🏁 **Yarış Arenası**: Koşu Parkuru, Engelli Parkur, Survivor (Düşen Karolar) ve Şampiyonlar Kupası. Arkadaşların seninle yarışır (ya da 👀 izle). Kazandıkça sonraki yarışlar ve özel eşyalar (Taç, Astronot, Galaksi rengi, Gökkuşağı izi) açılır.
+
+## Yeni: Sonsuz dünyalar, 3 katlı ev, araç ayarı
+- 🌍 Her hayvanı kurtardığında **yeni bir dünya** açılır (Altın Çöl, Şeker Diyarı, Volkan Adası, Bulut Ülkesi, Yıldız Gezegeni… toplam 20 yeni dünya, 20 yeni hayvan). Köydeki **Dünya Kapısı**ndan ya da haritadan gidilir; her dünyanın sonunda bir sonrakine portal vardır.
+- 🏡 Ev **3 kata** kadar büyür (2. kat: iki yataklı yatak odası, 3. kat: teras salonu). Merdivenle çıkılır.
+- 🌙 Köydeki arkadaşların evinde de **pijama partisi** yapılır (evin içindeki halıda "Pijama Partisi Yap").
+- 🚗 Çanta panelinden **araç boyutu ve rengi** ayarlanır.
+- 🏃 Yürüme 3 kat hızlı; uçuşta bırakınca hızlıca yere inilir.

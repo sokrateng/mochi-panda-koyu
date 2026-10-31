@@ -247,7 +247,7 @@ function buildW3() {
   signAt(w, -22, -34, '🐻 Kötü Ayı çok büyük! Duvara çarpınca sersemler.');
   [[0, 52], [-20, 8], [-28, -24]].forEach(([x, z]) => flagAt(w, x, z)); flagAt(w, 50, 10);
   const A = { cx: -30, cz: -62, r: 30 };
-  addCage(w, 'minipanda', -30, gy(w, -30, -86), -86, true); addPortal(w, -20, gy(w, -20, -84), -84, 'village', 0xffe27a, 'Köye dön');
+  addCage(w, 'minipanda', -30, gy(w, -30, -86), -86, true); addPortal(w, -20, gy(w, -20, -84), -84, 'village', 0xffe27a, 'Köye dön'); addPortal(w, -40, gy(w, -40, -84), -84, 'w4', 0x7affd0, 'Altın Çöl', 'w3');
   arenaRing(w, -30, -62, 30, 0x9ab4cc, Math.PI / 2);
   w.bossDef = { kind: 'ayi', name: 'Kötü Ayı', x: -30, y: gy(w, -30, -62), z: -62, arena: A };
   [[-8, 56, 'x'], [14, 44, 'z'], [-12, 28, 'x'], [24, 24, 'z'], [40, 22, 'x'], [-60, 10, 'z'], [-40, 24, 'x'], [-50, -8, 'x'], [-22, -14, 'z'], [52, -6, 'z']].forEach(([x, z, a]) => blobAt(w, x, z, a, 5, 2.2, 0x8fdcff));

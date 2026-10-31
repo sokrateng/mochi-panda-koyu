@@ -260,17 +260,30 @@ function makeVehicle(kind) {
   }
   g.userData = { wheels, kind }; shadowAll(g); ownMats(g); return g;
 }
+/* araç boyutu ve rengi (oyuncunun ayarı) */
+const VEH_COLORS = [
+  { id: 'def', c: null, n: 'Orijinal' }, { id: 'red', c: 0xff3b3b, n: 'Kırmızı' }, { id: 'orange', c: 0xff8a2a, n: 'Turuncu' }, { id: 'yellow', c: 0xffd23f, n: 'Sarı' },
+  { id: 'green', c: 0x3fcf6a, n: 'Yeşil' }, { id: 'teal', c: 0x1fc8b6, n: 'Turkuaz' }, { id: 'blue', c: 0x2a8dff, n: 'Mavi' }, { id: 'purple', c: 0xa56bff, n: 'Mor' },
+  { id: 'pink', c: 0xff6fb5, n: 'Pembe' }, { id: 'black', c: 0x2b2b33, n: 'Siyah' }, { id: 'white', c: 0xf4f4f6, n: 'Beyaz' }, { id: 'gold', c: 0xf2b705, n: 'Altın' },
+];
+const VEH_PRIMARY = { skate: [0x3f8de0], inline: [0xe0533d, 0xff4d6d], scooter: [0xff6f61], bike: [0x2a9dff], car: [0xff4a43] };
+const vehStyle = () => (save.vstyle || (save.vstyle = { size: 1, color: 'def' }));
+const vehSize = () => clamp(vehStyle().size || 1, 0.5, 2.5);
+function styleVehicle(g, kind) {
+  const st = vehStyle(), col = VEH_COLORS.find((c) => c.id === st.color); g.scale.setScalar(vehSize());
+  if (col && col.c !== null) g.traverse((o) => { if (o.isMesh && o.material && VEH_PRIMARY[kind].some((h) => o.material.color.equals(new T.Color(h)))) o.material.color.setHex(col.c); });
+}
 function setVehicle(p, id) {
   const u = p.userData; if (u.veh) { p.remove(u.veh); u.veh = null; } u.vehId = id || null;
   if (!id) { if (u.body) { u.body.position.z = 0; } return; }
-  u.veh = makeVehicle(id); p.add(u.veh);
+  u.veh = makeVehicle(id); styleVehicle(u.veh, id); p.add(u.veh);
 }
 /* sürücü duruşu: tekerlekleri döndürür, gövdeyi araca oturtur/oturtur */
 function applyRiderPose(p, id, speed, dt, t) {
   const u = p.userData, v = VEH[id]; if (!v) return;
-  u.body.position.y += v.lift; u.body.position.z = v.z;
+  const vs = vehSize(); u.body.position.y += v.lift * vs; u.body.position.z = v.z * vs;
   if (v.sit) { u.legL.rotation.x = -1.15; u.legR.rotation.x = -1.15; u.armL.rotation.x = -0.95; u.armR.rotation.x = -0.95; u.armL.rotation.z = -0.22; u.armR.rotation.z = 0.22; }
   else if (v.hold) { u.armL.rotation.x = -0.85; u.armR.rotation.x = -0.85; u.armL.rotation.z = -0.18; u.armR.rotation.z = 0.18; u.legL.rotation.x = 0.1; u.legR.rotation.x = -0.15; }
   else { u.legL.rotation.x = 0.12; u.legR.rotation.x = -0.1; u.armL.rotation.z = -0.55 + Math.sin(t * 3) * 0.08; u.armR.rotation.z = 0.55 - Math.sin(t * 3) * 0.08; u.armL.rotation.x = 0; u.armR.rotation.x = 0; }
-  if (u.veh) for (const w of u.veh.userData.wheels) w.pv.rotation.x += (speed * dt) / w.r;
+  if (u.veh) for (const w of u.veh.userData.wheels) w.pv.rotation.x += (speed * dt) / (w.r * vs);
 }

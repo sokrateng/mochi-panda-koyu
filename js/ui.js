@@ -33,7 +33,7 @@ const ui = (G.ui = {
   setHint(t) { const h = $('hint'); if (t) { if (h.textContent !== t) h.textContent = t; h.classList.remove('hidden'); } else h.classList.add('hidden'); },
   setInteract(it) { const b = $('interactBtn'); if (it && !G.paused) { if (b.textContent !== it.label + (isTouch ? '' : ' (E)')) b.textContent = it.label + (isTouch ? '' : ' (E)'); b.classList.remove('hidden'); } else b.classList.add('hidden'); },
   coinsChanged(up) { $('coinCount').textContent = save.coins; if (up) { const c = $('coins'); c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump'); } },
-  friendsChanged() { $('friendsCount').textContent = `Arkadaşlar ${FRIEND_ORDER.map((f) => (save.rescued[f] ? FRIENDS[f].emoji : '❔')).join(' ')}  ${rescuedCount()}/5`; },
+  friendsChanged() { $('friendsCount').textContent = `Arkadaşlar ${FRIEND_ORDER.map((f) => (save.rescued[f] ? FRIENDS[f].emoji : '❔')).join(' ')}  ${rescuedCount()}/5${extraRescued() ? ` +${extraRescued()}🐾` : ''}`; },
   questsChanged() { const open = save.daily.quests.some((q) => !q.done) && G.questSeen !== todayStr(); $('questBadge').classList.toggle('hidden', !open); if (Scr.kind === 'quests') ui.openQuests(true); },
   abilitiesChanged() {
     $('abilityBar').innerHTML = ABILITIES.map((a) => `<div class="ab ${hasAbility(a.id) ? '' : 'locked'}" data-ab="${a.id}" title="${a.name}">${hasAbility(a.id) ? a.icon : '🔒'}<small>${a.key}</small><div class="cd"></div></div>`).join('');
@@ -250,12 +250,19 @@ ui.openBag = function () {
   const net = `<div class="items" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:10px"><button class="item" data-act="gear" data-g="net"><span class="e">🕸️</span>Yakalama Ağı<span class="p" style="color:var(--ink-soft);font-size:.72rem;font-family:var(--font-b)">[N] Boss'u ve düşmanı yakalar</span></button><button class="item" data-act="gear" data-g="hit"><span class="e">👊</span>Yumruk<span class="p" style="color:var(--ink-soft);font-size:.72rem;font-family:var(--font-b)">[X] Vur!</span></button></div>`;
   showScreen(`<div class="panel">${closeBtn}<h2>🎒 Maceracı Çantası</h2><p class="sub">Mochi'nin zorunlu çantasında 5 araç ve 2 aksesuar var.</p><div class="items" style="grid-template-columns:repeat(auto-fill,minmax(118px,1fr))">${items}</div>
     <p class="note" style="margin-top:12px"><b>🧰 Aksesuarlar</b> — dokununca hemen kullanılır. Ağ atınca boss sersemler (7 sn), sonra yanına gidip vurursun.</p>${net}
-    <p class="note" style="margin-top:12px">Araçlar yürümekten hızlıdır ama yuvarlanma ve uçma araçlarla yapılmaz. Tahta kapıları kırmak için aracı çantaya koy. Klavyede 1-5 tuşları araç seçer, 0 yürütür.</p></div>`, 'bag');
+    ${ui.vehStyleHtml()}<p class="note" style="margin-top:12px">Araçlar yürümekten hızlıdır ama yuvarlanma ve uçma araçlarla yapılmaz. Tahta kapıları kırmak için aracı çantaya koy. Klavyede 1-5 tuşları araç seçer, 0 yürütür.</p></div>`, 'bag');
+};
+ui.vehStyleHtml = () => {
+  const st = vehStyle(), sw = VEH_COLORS.map((c) => `<button class="swatch ${st.color === c.id ? 'on' : ''}" style="background:${c.c === null ? 'conic-gradient(#ff3b3b,#ffd23f,#3fcf6a,#2a8dff,#a56bff,#ff3b3b)' : '#' + c.c.toString(16).padStart(6, '0')}" data-act="vcolor" data-v="${c.id}" aria-label="${c.n}" title="${c.n}"></button>`).join('');
+  return `<h3 style="margin:12px 0 4px">🚗 Araç Ayarı</h3><div class="row" style="margin:4px 0"><b style="min-width:84px">📏 Boyut</b><button class="tab" data-act="vsize" data-d="-1">➖</button><b style="min-width:54px;text-align:center">${Math.round(vehSize() * 100)}%</b><button class="tab" data-act="vsize" data-d="1">➕</button><button class="tab" data-act="vsize" data-d="0">↺ Normal</button></div>
+    <div class="row" style="margin:4px 0"><b style="min-width:84px">🎨 Renk</b>${sw}</div>`;
 };
 ui.vehicleChanged = function () { $('btnBag').textContent = P.vehicle ? VEH[P.vehicle].icon : '🎒'; $('btnBag').classList.toggle('on', !!P.vehicle); };
 Object.assign(ACT, {
   bag: () => ui.openBag(),
   veh: (d) => { closeScreen(); selectVehicle(d.v || null); },
+  vsize: (d) => { const st = vehStyle(); st.size = +d.d === 0 ? 1 : clamp(Math.round((vehSize() + 0.1 * +d.d) * 10) / 10, 0.5, 2.5); queueSave(); if (P.vehicle) setVehicle(P.mesh, P.vehicle); closeScreen(); ui.openBag(); },
+  vcolor: (d) => { vehStyle().color = d.v; queueSave(); if (P.vehicle) setVehicle(P.mesh, P.vehicle); closeScreen(); ui.openBag(); },
   gear: (d) => { closeScreen(); setTimeout(() => (d.g === 'net' ? G.act.net() : G.act.hit()), 60); },
   quality: (d) => { save.settings.quality = d.k; queueSave(); keepName(); G.applyQuality(); ui.openSettings(); },
   settime: (d) => { save.settings.time = d.k; queueSave(); keepName(); G.reapplyTod(); ui.openSettings(); },

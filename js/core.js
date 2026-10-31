@@ -85,11 +85,11 @@ const QUEST_POOL = [
 ];
 const VEH_ORDER = ['skate', 'inline', 'scooter', 'bike', 'car'];
 const VEH = {
-  skate:   { icon: '🛹', name: 'Kaykay',   speed: 9.5,  acc: 0.45, jump: 1.0,  lift: 0.12, z: 0,    sit: false, hold: false, desc: 'Hızlı ve kaygan' },
-  inline:  { icon: '🛼', name: 'Paten',    speed: 9,    acc: 0.3,  jump: 0.95, lift: 0.1,  z: 0,    sit: false, hold: false, desc: 'Buz gibi kayar' },
-  scooter: { icon: '🛴', name: 'Scooter',  speed: 10.5, acc: 0.6,  jump: 0.85, lift: 0.16, z: -0.05, sit: false, hold: true,  desc: 'Dengeli ve çevik' },
-  bike:    { icon: '🚲', name: 'Bisiklet', speed: 13,   acc: 0.5,  jump: 0.55, lift: 0.52, z: -0.2,  sit: true,  hold: false, desc: 'Çok hızlı' },
-  car:     { icon: '🚙', name: 'Mini Araba', speed: 17, acc: 0.45, jump: 0.3,  lift: 0.3,  z: -0.3,  sit: true,  hold: false, desc: 'En hızlısı, üstü açık' },
+  skate:   { icon: '🛹', name: 'Kaykay',   speed: 26,   acc: 0.45, jump: 1.0,  lift: 0.12, z: 0,    sit: false, hold: false, desc: 'Hızlı ve kaygan' },
+  inline:  { icon: '🛼', name: 'Paten',    speed: 25,   acc: 0.3,  jump: 0.95, lift: 0.1,  z: 0,    sit: false, hold: false, desc: 'Buz gibi kayar' },
+  scooter: { icon: '🛴', name: 'Scooter',  speed: 28,   acc: 0.6,  jump: 0.85, lift: 0.16, z: -0.05, sit: false, hold: true,  desc: 'Dengeli ve çevik' },
+  bike:    { icon: '🚲', name: 'Bisiklet', speed: 33,   acc: 0.5,  jump: 0.55, lift: 0.52, z: -0.2,  sit: true,  hold: false, desc: 'Çok hızlı' },
+  car:     { icon: '🚙', name: 'Mini Araba', speed: 40, acc: 0.45, jump: 0.3,  lift: 0.3,  z: -0.3,  sit: true,  hold: false, desc: 'En hızlısı, üstü açık' },
 };
 /* Gizli hileler (bug): sadece gizli kulübelerin yakınında çalışır, yalnızca içeri girmeye yarar */
 const BUGS = {
@@ -197,7 +197,8 @@ function importCode(input) {
 /* Tüm süper güçler en baştan açık: her karakter hepsini kullanabilir */
 const hasAbility = () => true;
 const rescuedCount = () => FRIEND_ORDER.filter((f) => save.rescued[f]).length;
-const worldDone = (w) => FRIEND_ORDER.filter((f) => FRIENDS[f].world === w).every((f) => save.rescued[f]);
+const worldDone = (w) => Object.keys(FRIENDS).filter((f) => FRIENDS[f].world === w).every((f) => save.rescued[f]);
+const extraRescued = () => Object.keys(FRIENDS).filter((f) => !FRIEND_ORDER.includes(f) && save.rescued[f]).length;
 const isOwned = (cat, id) => id === 'none' || id === 'classic' || !!save.owned[cat + ':' + id];
 
 /* ---------- Günlük görevler ---------- */

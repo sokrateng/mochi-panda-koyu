@@ -338,6 +338,7 @@ function house(w, x, z, color, fid, rescued) {
   else { [[0, 0.15, 0], [0.34, 0.15, 0.1], [0.12, 0.45, 0.04]].forEach(([a, b, c], i) => box(th, M([0xff6f61, 0x5ec8ff, 0xffd23f][i]), a, b, c, 0.3, 0.3, 0.3)); }
   localBlock(w, o, -3.0, 0.4, 1.0, 0.9, -1.5, 0.6);
   shadowAll(g, true, true); add(w, g);
+  if (rescued) { const rc = Math.cos(rot), rs = Math.sin(rot); addInteract(w, x - 0.1 * rc + 0.5 * rs, z + 0.1 * rs + 0.5 * rc, 3.2, '🌙 Pijama Partisi Yap', () => G.ex.home.houseParty({ fid, o })); }
   (w.houses || (w.houses = [])).push({ minx: x - 5, maxx: x + 5, minz: z - 5, maxz: z + 5, o, hx: HX, hz: HZ, roof: roofG, mat: wallMat, op: 1 });
   const dir = new T.Vector3(Math.sin(rot), 0, Math.cos(rot)), nx = x + dir.x * 6.2, nz = z + dir.z * 6.2;
   addSign(w, nx + dir.z * 2.8, 0, nz - dir.x * 2.8, rescued ? `${FRIENDS[fid].emoji} ${FRIENDS[fid].name}'in evi — içeri girebilirsin!` : '❔ Boş ev — arkadaşını bul!');

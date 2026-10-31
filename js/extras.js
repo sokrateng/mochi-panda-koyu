@@ -43,6 +43,11 @@ Ex.REGIONS = [
   { id: 'w2', icon: '🔮', name: 'Gizli Mağara', world: 'w2', open: () => worldDone('w1'), need: 'Bambu Ormanı arkadaşlarını kurtar' },
   { id: 'w3', icon: '🏔️', name: 'Buzul Dağ', world: 'w3', open: () => worldDone('w2'), need: 'Gizli Mağara arkadaşlarını kurtar' },
 ];
+/* sonsuz dünyalar: her biri bir öncekinin hayvanı kurtarılınca açılır */
+XW.forEach((d, i) => {
+  const prev = i ? XW[i - 1] : { id: 'w3', name: 'Buzul Dağ' };
+  Ex.REGIONS.push({ id: d.id, icon: d.emoji, name: d.name, world: d.id, series: true, open: () => worldDone(prev.id), need: `${prev.name} arkadaşını kurtar` });
+});
 Ex.region = (id) => Ex.REGIONS.find((r) => r.id === id);
 Ex.isOpen = (id) => { const r = Ex.region(id); return !!r && r.open(); };
 Ex.watchRegions = () => {
@@ -58,7 +63,7 @@ Ex.watchRegions = () => {
 
 /* ---------- Harita ---------- */
 const mapHalf = (w) => (w.id === 'arena' ? 85 : 105);
-const MAP_COL = { cave: [[52, 38, 98], [128, 98, 196]], ice: [[140, 180, 214], [250, 253, 255]], forest: [[52, 140, 54], [160, 206, 92]], village: [[78, 168, 66], [176, 214, 104]] };
+const MAP_COL = Object.assign({}, ...Object.entries(XTH).map(([k, t]) => ({ [k]: t.mapCol })), { cave: [[52, 38, 98], [128, 98, 196]], ice: [[140, 180, 214], [250, 253, 255]], forest: [[52, 140, 54], [160, 206, 92]], village: [[78, 168, 66], [176, 214, 104]] });
 Ex.mapBg = (w) => {
   if (w.mapBg) return w.mapBg;
   const N = 140, c = document.createElement('canvas'); c.width = c.height = N; const x = c.getContext('2d'), img = x.createImageData(N, N), half = mapHalf(w), st = (half * 2) / N, col = MAP_COL[w.theme] || MAP_COL.village;
@@ -97,13 +102,13 @@ Ex.minimap = () => {
 };
 Ex.openMap = () => {
   if (G.mode !== 'play' || !G.world) return; if (Scr.open && Scr.kind === 'map') { closeScreen(); return; } if (Scr.open) return;
-  const w = G.world, rows = Ex.REGIONS.map((r) => {
+  const firstLocked = Ex.REGIONS.find((r) => r.series && !r.open()), w = G.world, rows = Ex.REGIONS.filter((r) => !r.series || r.open() || r === firstLocked).map((r) => {
     const op = r.open(), here = r.world === w.id;
     const go = op && !(here && !r.tp) ? `<button class="tab" data-act="mapgo" data-id="${r.id}">✨ Git</button>` : '';
     return `<div class="quest ${op ? 'done' : ''}"><div class="qi">${op ? r.icon : '🔒'}</div><div class="qt">${esc(r.name)}${here ? ' <small>• buradasın</small>' : ''}<br><small>${op ? 'Açık' : '🔒 ' + esc(r.need)}</small></div><div class="qr">${go}</div></div>`;
   }).join('');
   showScreen(`<div class="panel mappanel">${closeBtn}<h2>🗺️ Harita</h2><p class="sub">${esc(WORLD_META[w.id].name)} • 🐾 kurtarılmamış arkadaş • 🌀 portal • 🧰 sandık</p>
-    <canvas id="mapCv" width="360" height="360" aria-label="Harita"></canvas>${rows}<p class="note">Arkadaşlarını kurtardıkça yeni bölgeler açılır. Haritayı M tuşuyla da açabilirsin.</p></div>`, 'map');
+    <canvas id="mapCv" width="360" height="360" aria-label="Harita"></canvas>${rows}<p class="note">Her hayvanı kurtarışında yeni bir dünya açılır, bu böyle sonsuza kadar sürer! 🌍 Haritayı M tuşuyla da açabilirsin.</p></div>`, 'map');
   Ex.drawMap($('mapCv'), w, true);
 };
 Ex.acts.map = () => { closeScreen(); setTimeout(Ex.openMap, 40); };
@@ -208,3 +213,20 @@ Wild.update = (dt) => {
     b.m.rotation.z = -0.25 * Math.sign(b.sp); wg.forEach((q, i) => { q.rotation.z = (i ? 1 : -1) * (Math.sin(t * 7 + b.ph) * 0.5 + 0.1); });
   }
 };
+
+/* ---------- Köyde Dünya Kapısı: açılan tüm dünyalara haritadan git ---------- */
+Ex.mods.push({
+  onWorld(w) {
+    if (w.id !== 'village') return;
+    const gx = 0, gz = -46, gyy = w.groundAt ? w.groundAt(gx, gz) : 0, g = new T.Group(), st = M(0xd8cfb8), glow = new T.MeshBasicMaterial({ color: 0x7affd0, transparent: true, opacity: 0.7 });
+    g.position.set(gx, gyy, gz);
+    [-2.2, 2.2].forEach((s) => g.add(mesh(geo('cyl', 0.5, 0.6, 5.2, 8), st, s, 2.6, 0)));
+    const arch = mesh(geo('tor', 2.2, 0.5, 20), st, 0, 5.2, 0); arch.scale.set(1, 0.9, 0.9); g.add(arch);
+    const disc = mesh(geo('cyl', 2.1, 2.1, 0.1, 24), glow, 0, 2.9, 0); disc.rotation.x = Math.PI / 2; g.add(disc); Ex.gateDisc = disc;
+    for (let i = 0; i < 6; i++) { const a = (i / 6) * 6.283, o = mesh(geo('oct', 0.3), new T.MeshBasicMaterial({ color: [0xffe27a, 0x7affd0, 0xff9ad5][i % 3] }), Math.cos(a) * 2.6, 2.9 + Math.sin(a) * 2.6, 0); g.add(o); }
+    shadowAll(g); w.group.add(g);
+    addSign(w, 4.2, gyy, gz + 3, '🌍 Dünya Kapısı! Her hayvanı kurtardıkça yeni dünyalar açılır. Haritadan git!');
+    addInteract(w, gx, gz + 1, 4.2, '🌍 Dünya Kapısı: yeni dünyalara git', () => Ex.openMap());
+  },
+  update() { if (Ex.gateDisc && G.world && G.world.id === 'village') { Ex.gateDisc.rotation.z += 0.03; Ex.gateDisc.material.opacity = 0.55 + Math.sin(G.time * 3) * 0.15; } },
+});

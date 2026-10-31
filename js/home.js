@@ -6,7 +6,7 @@ const HOME_PAL = {
   door: { blue: 0x4aa8ff, red: 0xe05555, yellow: 0xf4c430, green: 0x4cc76a, purple: 0xa56bff },
 };
 const HOME_KIND = { wall: '🧱 Duvar', roof: '🏠 Çatı', door: '🚪 Kapı' };
-const HOME_STAGES = [{ name: 'Temel', icon: '🪨', wood: 4 }, { name: 'Duvarlar', icon: '🧱', wood: 8 }, { name: 'Çatı', icon: '🏠', wood: 6 }];
+const HOME_STAGES = [{ name: 'Temel', icon: '🪨', wood: 4 }, { name: 'Duvarlar', icon: '🧱', wood: 8 }, { name: 'Çatı', icon: '🏠', wood: 6 }, { name: '2. Kat', icon: '🪜', wood: 10 }, { name: '3. Kat', icon: '🏰', wood: 12 }];
 const HOME_ITEMS = {
   bed: { name: 'Yatak', icon: '🛏️', wood: 4 }, sofa: { name: 'Koltuk', icon: '🛋️', wood: 3 }, table: { name: 'Masa', icon: '🍽️', wood: 2 },
   rug: { name: 'Halı', icon: '🟣', wood: 1 }, lamp: { name: 'Lamba', icon: '💡', wood: 1 }, shelf: { name: 'Kitaplık', icon: '📚', wood: 3 }, plant: { name: 'Saksı', icon: '🪴', wood: 1 },
@@ -20,7 +20,7 @@ const FOODS = {
   kebab:  { name: 'Şiş Kebap',       icon: '🍢', price: 10, en: 22, boost: 45, time: 4 },
 };
 const Home = (Ex.home = {
-  O: { x: -54, z: 38 }, HX: 5, HZ: 4, FY: 0.3, Y: { cx: -46, cz: 38, hx: 17, hz: 14 },
+  O: { x: -54, z: 38 }, HX: 5, HZ: 4, FY: 0.3, FH: 3.55, Y: { cx: -46, cz: 38, hx: 17, hz: 14 },
   fire: { x: -39, z: 32 }, grill: { x: -37, z: 45 }, bench: { x: -46, z: 31 },
   w: null, solids: [], itx: [], seats: [], trees: [], grp: null, roof: null, wallMat: null, gate: null, chopCd: 0, grillT: 0, campT: 0, cook: null, party: null,
 });
@@ -152,54 +152,91 @@ Home.rebuild = () => {
     col(-HX - 0.45, HX + 0.45, -1, FY, -HZ - 0.45, HZ + 0.45);
     gAdd(g, hm(0xb7b2a4), HX + 0.9, 0.08, 0, 0.9, 0.16, 2.8);
   }
+  const floors = Home.floors(), WH = 3.2, FHt = Home.FH, Ly = (f) => FY + f * FHt;
   if (st >= 2) {
     const wm = new T.MeshStandardMaterial({ color: wallC, roughness: 0.85, transparent: true }); Home.wallMat = wm; Home.wallOp = 1;
-    const WH = 3.2, wy = FY + WH / 2, wall = (cx, cz, sx, sz, y0 = FY, y1 = FY + WH) => { const b = mesh(BOX(), wm, cx, (y0 + y1) / 2, cz); b.scale.set(sx, y1 - y0, sz); b.castShadow = true; b.receiveShadow = true; g.add(b); col(cx - sx / 2, cx + sx / 2, y0, y1, cz - sz / 2, cz + sz / 2); };
-    wall(-HX, 0, Tk, 2 * HZ + Tk); wall(0, -HZ, 2 * HX + Tk, Tk); wall(0, HZ, 2 * HX + Tk, Tk);
-    wall(HX, -(HZ + 1.2) / 2, Tk, HZ - 1.2 + Tk / 2); wall(HX, (HZ + 1.2) / 2, Tk, HZ - 1.2 + Tk / 2); wall(HX, 0, Tk, 2.4, FY + 2.6, FY + WH);
-    const dm = hm(doorC); gAdd(g, dm, HX + 0.02, FY + 1.3, -1.28, 0.42, 2.6, 0.16); gAdd(g, dm, HX + 0.02, FY + 1.3, 1.28, 0.42, 2.6, 0.16); gAdd(g, dm, HX + 0.02, FY + 2.66, 0, 0.42, 0.16, 2.72);
-    const lf = gAdd(g, dm, HX + 0.9, FY + 1.2, -1.75, 1.3, 2.4, 0.1); lf.rotation.y = 0.5; g.add(mesh(geo('sph', 0.07, 6, 5), hm(0xffd23f), HX + 1.3, FY + 1.2, -1.5));
-    const glass = new T.MeshStandardMaterial({ color: 0xbfe6ff, emissive: 0x3a6a88, emissiveIntensity: 0.35, roughness: 0.1, metalness: 0.3 }), fm = hm(0xffffff);
-    [[-2.8, -HZ], [2.6, -HZ], [-2.8, HZ], [2.8, HZ]].forEach(([x, z]) => { const s = z < 0 ? -1 : 1; gAdd(g, fm, x, FY + 1.8, z + s * 0.19, 1.7, 1.3, 0.06); gAdd(g, glass, x, FY + 1.8, z + s * 0.23, 1.45, 1.05, 0.04); gAdd(g, fm, x, FY + 1.8, z + s * 0.26, 0.06, 1.05, 0.04); });
-    gAdd(g, fm, -HX - 0.19, FY + 1.8, 0, 0.06, 1.3, 1.7); gAdd(g, glass, -HX - 0.23, FY + 1.8, 0, 0.04, 1.05, 1.45);
+    const fm = hm(0xffffff), glass = new T.MeshStandardMaterial({ color: 0xbfe6ff, emissive: 0x3a6a88, emissiveIntensity: 0.35, roughness: 0.1, metalness: 0.3 }), dm = hm(doorC);
+    const wall = (cx, cz, sx, sz, y0 = FY, y1 = FY + WH) => { const b = mesh(BOX(), wm, cx, (y0 + y1) / 2, cz); b.scale.set(sx, y1 - y0, sz); b.castShadow = true; b.receiveShadow = true; g.add(b); col(cx - sx / 2, cx + sx / 2, y0, y1, cz - sz / 2, cz + sz / 2); };
+    for (let f = 0; f < floors; f++) {
+      const y0 = Ly(f), y1 = y0 + WH;
+      wall(-HX, 0, Tk, 2 * HZ + Tk, y0, y1); wall(0, -HZ, 2 * HX + Tk, Tk, y0, y1); wall(0, HZ, 2 * HX + Tk, Tk, y0, y1);
+      if (f === 0) {
+        wall(HX, -(HZ + 1.2) / 2, Tk, HZ - 1.2 + Tk / 2); wall(HX, (HZ + 1.2) / 2, Tk, HZ - 1.2 + Tk / 2); wall(HX, 0, Tk, 2.4, FY + 2.6, FY + WH);
+        gAdd(g, dm, HX + 0.02, FY + 1.3, -1.28, 0.42, 2.6, 0.16); gAdd(g, dm, HX + 0.02, FY + 1.3, 1.28, 0.42, 2.6, 0.16); gAdd(g, dm, HX + 0.02, FY + 2.66, 0, 0.42, 0.16, 2.72);
+        const lf = gAdd(g, dm, HX + 0.9, FY + 1.2, -1.75, 1.3, 2.4, 0.1); lf.rotation.y = 0.5; g.add(mesh(geo('sph', 0.07, 6, 5), hm(0xffd23f), HX + 1.3, FY + 1.2, -1.5));
+      } else {
+        wall(HX, 0, Tk, 2 * HZ + Tk, y0, y1);
+        [-1.9, 1.9].forEach((z) => { gAdd(g, fm, HX + 0.19, y0 + 1.8, z, 0.06, 1.3, 1.7); gAdd(g, glass, HX + 0.23, y0 + 1.8, z, 0.04, 1.05, 1.45); });
+      }
+      [[-2.8, -HZ], [2.6, -HZ], [-2.8, HZ], [2.8, HZ]].forEach(([x, z]) => { const sd = z < 0 ? -1 : 1; gAdd(g, fm, x, y0 + 1.8, z + sd * 0.19, 1.7, 1.3, 0.06); gAdd(g, glass, x, y0 + 1.8, z + sd * 0.23, 1.45, 1.05, 0.04); gAdd(g, fm, x, y0 + 1.8, z + sd * 0.26, 0.06, 1.05, 0.04); });
+      gAdd(g, fm, -HX - 0.19, y0 + 1.8, 0, 0.06, 1.3, 1.7); gAdd(g, glass, -HX - 0.23, y0 + 1.8, 0, 0.04, 1.05, 1.45);
+    }
+    /* katlar arası döşeme (merdiven boşluklu) ve merdivenler */
+    const slabM = hm(0xc99a5c, { roughness: 0.7 }), stepA = hm(0xe0b074), stepB = hm(0xd6a15d), Z0 = 2.15, Z1 = 3.85, HX0 = -0.4, HX1 = 4.82, HL = -1.7;
+    for (let f = 1; f < floors; f++) {
+      const top = Ly(f), bot = top - 0.35, north = (f - 1) % 2 === 0;
+      const rects = north ? [[-HX, HX, -HZ, -Z1], [-HX, HL, -Z1, -Z0], [HX1, HX, -Z1, -Z0], [-HX, HX, -Z0, HZ]] : [[-HX, HX, -HZ, Z0], [-HX, HL, Z0, Z1], [HX1, HX, Z0, Z1], [-HX, HX, Z1, HZ]];
+      rects.forEach(([x0, x1, z0, z1]) => { const sl = mesh(BOX(), slabM, (x0 + x1) / 2, (top + bot) / 2, (z0 + z1) / 2); sl.scale.set(x1 - x0, 0.35, z1 - z0); sl.receiveShadow = true; sl.castShadow = true; g.add(sl); col(x0, x1, bot, top, z0, z1); });
+      const base = Ly(f - 1), N = 9, rise = FHt / N, run = (HX1 - HX0) / N, zs = north ? [-Z1, -Z0] : [Z0, Z1];
+      for (let i = 0; i < N; i++) {
+        const x0 = HX0 + i * run, x1 = x0 + run, y = base + (i + 1) * rise, sb = mesh(BOX(), i % 2 ? stepA : stepB, (x0 + x1) / 2, (y + base - 0.2) / 2, (zs[0] + zs[1]) / 2);
+        sb.scale.set(run, y - base + 0.2, zs[1] - zs[0]); sb.receiveShadow = true; sb.castShadow = true; g.add(sb); col(x0, x1, base - 0.2, y, zs[0], zs[1]);
+      }
+    }
   }
   if (st >= 3) {
-    const roof = new T.Group(); roof.position.y = FY + 3.2; g.add(roof), Home.roof = roof;
+    const roof = new T.Group(); roof.position.y = Ly(floors - 1) + WH; g.add(roof), Home.roof = roof;
     const rm = new T.MeshStandardMaterial({ color: roofC, roughness: 0.8, flatShading: true }), body = mesh(geo('cone', 1, 1, 4), rm, 0, 1.75, 0); body.rotation.y = Math.PI / 4; body.scale.set((2 * HX + 1.9) / 2 / 0.7071, 3.5, (2 * HZ + 1.9) / 2 / 0.7071); body.castShadow = true; roof.add(body);
     const ch = mesh(BOX(), hm(0xa8553c), 3, 2.2, -1.6); ch.scale.set(0.8, 2.2, 0.8); ch.castShadow = true; roof.add(ch); gAdd(roof, hm(0x5b3a2a), 3, 3.38, -1.6, 1.0, 0.14, 1.0);
   }
   /* mobilyalar */
   if (st >= 2) {
     const it = H.items || {}, wood = hm(0xc9924e), dark = hm(0x8b5a2b), cosyC = HOME_PAL.roof[H.roof] || 0xd9534f, fab = hm(cosyC), fab2 = hm(cosyC + 0x181818);
-    const seat = (id, kind, lx, y, lz, yaw, ex, ez, label, rad = 2.6) => {
-      const x = O.x + lx, z = O.z + lz, s = { house: true, kind, x, y, z, yaw, ex: O.x + ex, ez: O.z + ez }; Home.seats.push(s);
-      const itx = { house: true, x, z, r: rad, base: label, label, fn: () => Home.sitAt(s) }; w.interacts.push(itx); Home.itx.push(itx);
+    const seat = (kind, lx, y, lz, yaw, ex, ez, label, rad, fy) => {
+      const x = O.x + lx, z = O.z + lz, s = { house: true, kind, x, y, z, yaw, ex: O.x + ex, ez: O.z + ez, fy }; Home.seats.push(s);
+      const itx = { house: true, x, z, r: rad, base: label, label, fn: () => Home.sitAt(s), y: fy }; w.interacts.push(itx); Home.itx.push(itx);
     };
-    if (it.bed) {
-      const b = new T.Group(); b.position.set(-3.1, FY, -1.9); gAdd(b, dark, 0, 0.22, 0, 2.3, 0.44, 3.7); gAdd(b, hm(0xffffff), 0, 0.55, 0, 2.05, 0.22, 3.4); gAdd(b, fab2, 0, 0.7, 0.6, 2.08, 0.1, 2.0); gAdd(b, hm(0xfff7ea), 0, 0.72, -1.35, 1.5, 0.18, 0.7); gAdd(b, dark, 0, 0.7, -1.82, 2.3, 1.0, 0.12); shadowAll(b); g.add(b);
-      col(-4.25, -1.95, FY - 0.5, FY + 0.7, -3.75, -0.05); seat('bed', 'lie', -3.1, FY + 0.95, -1.4, 0, -1.2, 0.6, '🛏️ Yatağa Yat');
-    }
-    if (it.sofa) {
-      const s = new T.Group(); s.position.set(-0.6, FY, 3.0); gAdd(s, fab, 0, 0.27, 0, 3.3, 0.5, 1.3); gAdd(s, fab2, 0, 0.8, 0.55, 3.3, 0.85, 0.3); [-1, 1].forEach((k) => gAdd(s, fab2, k * 1.62, 0.52, 0, 0.26, 0.6, 1.3));
-      [-0.8, 0.8].forEach((x) => gAdd(s, hm(cosyC + 0x303030), x, 0.62, -0.05, 1.3, 0.2, 1.0)); shadowAll(s); g.add(s); col(-2.3, 1.1, FY - 0.5, FY + 0.6, 2.35, 3.7);
-      seat('sofa', 'sit', -0.6, FY + 0.5, 2.9, Math.PI, -0.6, 1.2, '🛋️ Koltuğa Otur');
-    }
+    const bed = (lx, lz, by, fy, label) => {
+      const b = new T.Group(); b.position.set(lx, by, lz); gAdd(b, dark, 0, 0.22, 0, 2.3, 0.44, 3.7); gAdd(b, hm(0xffffff), 0, 0.55, 0, 2.05, 0.22, 3.4); gAdd(b, fab2, 0, 0.7, 0.6, 2.08, 0.1, 2.0); gAdd(b, hm(0xfff7ea), 0, 0.72, -1.35, 1.5, 0.18, 0.7); gAdd(b, dark, 0, 0.7, -1.82, 2.3, 1.0, 0.12); shadowAll(b); g.add(b);
+      col(lx - 1.15, lx + 1.15, by - 0.5, by + 0.7, lz - 1.85, lz + 1.85); seat('lie', lx, by + 0.95, lz + 0.5, 0, lx + 1.9, lz + 0.6, label, 2.6, fy);
+    };
+    const sofa = (lx, lz, by, flip, fy) => {
+      const s = new T.Group(); s.position.set(lx, by, lz); if (flip) s.rotation.y = Math.PI; gAdd(s, fab, 0, 0.27, 0, 3.3, 0.5, 1.3); gAdd(s, fab2, 0, 0.8, 0.55, 3.3, 0.85, 0.3); [-1, 1].forEach((k) => gAdd(s, fab2, k * 1.62, 0.52, 0, 0.26, 0.6, 1.3));
+      [-0.8, 0.8].forEach((x) => gAdd(s, hm(cosyC + 0x303030), x, 0.62, -0.05, 1.3, 0.2, 1.0)); shadowAll(s); g.add(s); col(lx - 1.7, lx + 1.7, by - 0.5, by + 0.6, lz - 0.65, lz + 0.65);
+      seat('sit', lx, by + 0.5, lz + (flip ? 0.1 : -0.1) * 1 + (flip ? 0 : 0.2), flip ? 0 : Math.PI, lx, lz + (flip ? 1.3 : -1.3), '🛋️ Koltuğa Otur', 2.6, fy);
+    };
+    const rugAt = (lx, lz, by, c1, c2) => { g.add(mesh(geo('cyl', 1.8, 1.8, 0.03, 20), hm(c1), lx, by + 0.02, lz)); g.add(mesh(geo('cyl', 1.15, 1.15, 0.035, 20), hm(c2), lx, by + 0.025, lz)); };
+    const lampAt = (lx, lz, by) => { const l = new T.Group(); l.position.set(lx, by, lz); l.add(mesh(geo('cyl', 0.2, 0.25, 0.08, 8), dark, 0, 0.04, 0)); l.add(mesh(geo('cyl', 0.04, 0.04, 1.5, 6), dark, 0, 0.8, 0)); l.add(mesh(geo('cone', 0.4, 0.5, 10), new T.MeshBasicMaterial({ color: 0xffe9a0 }), 0, 1.7, 0)); shadowAll(l); g.add(l); };
+    const pot = (lx, lz, by) => { const p = new T.Group(); p.position.set(lx, by, lz); p.add(mesh(geo('cyl', 0.3, 0.22, 0.45, 9), hm(0xc2693c), 0, 0.22, 0)); p.add(mesh(geo('blob', 0.5, 2), hm(0x3fae5a), 0, 0.85, 0)); p.add(mesh(geo('blob', 0.34, 3), hm(0x58c76a), 0.2, 1.25, 0.1)); shadowAll(p); g.add(p); };
+    if (it.bed) bed(-3.1, -1.9, FY, undefined, '🛏️ Yatağa Yat');
+    if (it.sofa) sofa(-0.6, 3.0, FY, false, undefined);
     if (it.table) { const t = new T.Group(); t.position.set(1.4, FY, -0.7); gAdd(t, wood, 0, 0.85, 0, 1.9, 0.12, 1.15); [[-0.8, -0.45], [0.8, -0.45], [-0.8, 0.45], [0.8, 0.45]].forEach(([x, z]) => gAdd(t, dark, x, 0.42, z, 0.1, 0.84, 0.1)); t.add(mesh(geo('cyl', 0.2, 0.17, 0.05, 10), hm(0xffffff), -0.3, 0.94, 0)); t.add(mesh(geo('cyl', 0.07, 0.06, 0.12, 8), hm(0xff8fb1), 0.4, 0.97, 0.1)); shadowAll(t); g.add(t); col(0.4, 2.4, FY - 0.5, FY + 0.92, -1.3, -0.1); }
-    if (it.rug) { const r = mesh(geo('cyl', 1.8, 1.8, 0.03, 20), hm(0xb28bff), 0.4, FY + 0.02, 0.5); g.add(r); const r2 = mesh(geo('cyl', 1.15, 1.15, 0.035, 20), hm(0xffd23f), 0.4, FY + 0.025, 0.5); g.add(r2); }
-    if (it.lamp) { const l = new T.Group(); l.position.set(3.7, FY, -3.0); l.add(mesh(geo('cyl', 0.2, 0.25, 0.08, 8), dark, 0, 0.04, 0)); l.add(mesh(geo('cyl', 0.04, 0.04, 1.5, 6), dark, 0, 0.8, 0)); l.add(mesh(geo('cone', 0.4, 0.5, 10), new T.MeshBasicMaterial({ color: 0xffe9a0 }), 0, 1.7, 0)); shadowAll(l); g.add(l); }
-    if (it.shelf) { const s = new T.Group(); s.position.set(-4.55, FY, 2.0); gAdd(s, wood, 0, 1.15, 0, 0.5, 2.3, 2.1); [0.55, 1.15, 1.75].forEach((y) => { for (let k = 0; k < 6; k++) gAdd(s, hm([0xe05555, 0x4aa8ff, 0xf4c430, 0x4cc76a, 0xa56bff, 0xff8fb1][k]), 0.2, y + 0.2, -0.85 + k * 0.32, 0.22, 0.4, 0.22); }); shadowAll(s); g.add(s); col(-4.85, -4.25, FY - 0.5, FY + 2.3, 0.9, 3.1); }
-    if (it.plant) { const p = new T.Group(); p.position.set(3.7, FY, 3.0); p.add(mesh(geo('cyl', 0.3, 0.22, 0.45, 9), hm(0xc2693c), 0, 0.22, 0)); p.add(mesh(geo('blob', 0.5, 2), hm(0x3fae5a), 0, 0.85, 0)); p.add(mesh(geo('blob', 0.34, 3), hm(0x58c76a), 0.2, 1.25, 0.1)); shadowAll(p); g.add(p); }
+    if (it.rug) rugAt(0.4, 0.5, FY, 0xb28bff, 0xffd23f);
+    if (it.lamp) lampAt(4.25, 1.9, FY);
+    if (it.shelf) { const sh = new T.Group(); sh.position.set(-4.55, FY, 2.0); gAdd(sh, wood, 0, 1.15, 0, 0.5, 2.3, 2.1); [0.55, 1.15, 1.75].forEach((y) => { for (let k = 0; k < 6; k++) gAdd(sh, hm([0xe05555, 0x4aa8ff, 0xf4c430, 0x4cc76a, 0xa56bff, 0xff8fb1][k]), 0.2, y + 0.2, -0.85 + k * 0.32, 0.22, 0.4, 0.22); }); shadowAll(sh); g.add(sh); col(-4.85, -4.25, FY - 0.5, FY + 2.3, 0.9, 3.1); }
+    if (it.plant) pot(3.7, 3.0, FY);
+    /* 2. kat: yatak odası (pijama partisi için iki yatak), 3. kat: teras salonu (iki koltuk) */
+    if (floors >= 2) {
+      const by = Ly(1);
+      bed(-3.1, -1.9, by, by, '🛏️ Yatağa Yat (2. kat)'); bed(-3.1, 1.9, by, by, '🛏️ Yatağa Yat (2. kat)'); rugAt(1.2, 0.6, by, 0x7fd8ff, 0xffffff); lampAt(4.25, -3.2, by); pot(3.7, -1.0, by);
+    }
+    if (floors >= 3) {
+      const by = Ly(2);
+      sofa(-3.15, 3.0, by, false, by); sofa(-3.15, -3.0, by, true, by); rugAt(1.0, -0.2, by, 0xffd23f, 0xff8fb1); lampAt(4.25, -3.2, by); lampAt(-4.4, 0.2, by);
+      const tb = new T.Group(); tb.position.set(1.4, by, -0.4); gAdd(tb, wood, 0, 0.7, 0, 1.4, 0.1, 1.0); [[-0.55, -0.35], [0.55, -0.35], [-0.55, 0.35], [0.55, 0.35]].forEach(([x, z]) => gAdd(tb, dark, x, 0.35, z, 0.08, 0.7, 0.08)); shadowAll(tb); g.add(tb); col(0.65, 2.15, by - 0.5, by + 0.76, -0.95, 0.15);
+    }
   }
 };
 
 /* ---------- Otur / yat ---------- */
+Home.floors = () => (save.home.stage >= 5 ? 3 : save.home.stage >= 4 ? 2 : 1);
 Home.sitAt = (s) => {
   if (Ex.seat) { Home.stand(); return; }
   Ex.seat = { kind: s.kind, x: s.x, y: s.y, z: s.z, yaw: s.yaw, ex: s.ex, ez: s.ez, t: 0, zz: 0, slept: false }; P.vel.set(0, 0, 0); P.fly = false; P.rolling = 0; P.vehicle = null; P.sprintOn = false;
   G.ui.toast(s.kind === 'lie' ? '😴 Yattın! Kalkmak için hareket et ya da zıpla.' : '😌 Oturdun! Kalkmak için hareket et ya da zıpla.');
 };
 Home.stand = () => {
-  const s = Ex.seat; if (!s) return; Ex.seat = null; const w = G.world; P.pos.set(s.ex, (w.groundAt ? Math.max(w.groundAt(s.ex, s.ez), Home.FY * (Home.w && Math.abs(s.ex - Home.O.x) < Home.HX && Math.abs(s.ez - Home.O.z) < Home.HZ && save.home.stage >= 1 ? 1 : 0)) : 0) + 0.05, s.ez); P.vel.set(0, 0, 0);
+  const s = Ex.seat; if (!s) return; Ex.seat = null; const w = G.world; P.pos.set(s.ex, s.fy !== undefined ? s.fy + 0.05 : (w.groundAt ? Math.max(w.groundAt(s.ex, s.ez), Home.FY * (Home.w && Math.abs(s.ex - Home.O.x) < Home.HX && Math.abs(s.ez - Home.O.z) < Home.HZ && save.home.stage >= 1 ? 1 : 0)) : 0) + 0.05, s.ez); P.vel.set(0, 0, 0);
 };
 Home.hold = (dt) => {
   const s = Ex.seat; if (!s) return false;
@@ -268,35 +305,48 @@ Home.updateCook = (dt) => {
 };
 
 /* ---------- Pijama partisi ---------- */
-Home.canParty = () => save.home.stage >= 3 && Home.campT > 0 && rescuedCount() >= 1 && !Home.party;
-Home.startParty = () => {
-  if (save.home.stage < 3) { G.ui.toast('🏠 Önce evini bitir (temel, duvarlar, çatı)! Parti evde de devam eder.'); return; }
-  if (rescuedCount() < 1) { G.ui.toast('🐾 Partiye çağıracak arkadaşın yok. Önce birini kurtar!'); return; }
-  const w = Home.w, Y = Home.Y, fr = FRIEND_ORDER.filter((f) => save.rescued[f]), npcs = [];
+Home.canParty = () => save.home.stage >= 3 && Home.campT > 0 && allRescued().length >= 1 && !Home.party;
+const allRescued = () => Object.keys(FRIENDS).filter((f) => save.rescued[f]);
+/* arkadaşın evinde pijama partisi: ev sahibi + diğer arkadaşlar halının etrafında minderlere oturur */
+Home.houseParty = (h) => {
+  if (Home.party) { G.ui.toast('🎉 Bir parti zaten sürüyor!'); return; }
+  const w = Home.w; if (!w) return; const fid = h.fid, others = allRescued().filter((f) => f !== fid).sort(() => Math.random() - 0.5).slice(0, 5), fr = [fid, ...others];
+  const R = h.o.r, c = Math.cos(R), s = Math.sin(R), tw = (lx, lz) => ({ x: h.o.x + lx * c + lz * s, z: h.o.z - lx * s + lz * c });
+  const ctr = tw(-0.1, 0.5), pads = fr.map((f, i) => { const a = (i / fr.length) * 6.283 + 0.4, p = tw(-0.1 + Math.cos(a) * 1.9, 0.5 + Math.sin(a) * 1.3); return { x: p.x, z: p.z }; });
+  const cush = [], cols = [0xff8fb1, 0xffd23f, 0x7fd8ff, 0xa6e36f, 0xc89bff, 0xffa05c];
+  pads.forEach((p, i) => { const pd = mesh(geo('cyl', 0.5, 0.54, 0.16, 12), hm(cols[i % 6]), p.x, 0.17, p.z); w.group.add(pd); cush.push(pd); });
+  Home.startParty({ fr, pads, center: ctr, spawn: tw(0, 7.4), y: 0.17, cush, label: `${FRIENDS[fid].name}'in evinde` });
+};
+Home.startParty = (site) => {
+  if (!site) {
+    if (save.home.stage < 3) { G.ui.toast('🏠 Önce evini bitir (temel, duvarlar, çatı)! Parti evde de devam eder.'); return; }
+    if (allRescued().length < 1) { G.ui.toast('🐾 Partiye çağıracak arkadaşın yok. Önce birini kurtar!'); return; }
+  }
+  const w = Home.w, Y = Home.Y, fr = site ? site.fr : allRescued().slice(0, 6), npcs = [], sp = site ? site.spawn : { x: Y.cx + Y.hx + 1.5, z: Y.cz };
   fr.forEach((fid, i) => {
-    const m = makeCreature(fid); m.position.set(Y.cx + Y.hx + 1.5, 0, Y.cz); w.group.add(m);
+    const m = makeCreature(fid); m.position.set(sp.x, 0, sp.z); w.group.add(m);
     const cap = mesh(geo('cone', 0.22, 0.5, 8), new T.MeshStandardMaterial({ color: [0xb28bff, 0xff8fb1, 0x7fd8ff, 0xffd23f, 0x7ed957][i % 5] }), 0, 0.62, -0.05); cap.rotation.x = -0.25; m.userData.head.add(cap); m.userData.head.add(mesh(geo('sph', 0.07, 6, 5), M(0xffffff), 0, 0.88, -0.17));
-    npcs.push({ m, fid, pad: Home.pads[i % Home.pads.length], seated: false, say: 3 + i * 1.7 });
+    npcs.push({ m, fid, pad: site ? site.pads[i] : Home.pads[i % Home.pads.length], seated: false, say: 3 + i * 1.7 });
   });
-  Home.party = { t: 0, dur: 85, npcs, prevTime: save.settings.time, confetti: 2 };
-  save.settings.time = 'evening'; G.reapplyTod && G.reapplyTod(); celebrate(Home.fire.x, 1, Home.fire.z, true, 'Pijama Partisi! 🌙');
+  Home.party = { t: 0, dur: 85, npcs, prevTime: save.settings.time, confetti: 2, center: site ? site.center : Home.fire, y: site ? site.y : 0.2, cush: site ? site.cush : [], house: !!site };
+  save.settings.time = 'evening'; G.reapplyTod && G.reapplyTod(); celebrate(Home.party.center.x, 1, Home.party.center.z, true, 'Pijama Partisi! 🌙');
   G.ui.toast(`🌙 Pijama partisi başladı! ${fr.length} arkadaşın geliyor…`, 'gold'); Sfx.play('yayBig');
 };
 const PARTY_LINES = ['Marshmallow harika! 🍡', 'Mangal çok güzel kokuyor 🍖', 'Hadi masal anlatalım 📖', 'En güzel pijama benimki! 🌙', 'Yastık savaşı yapalım mı? 🛏️', 'Yıldızlara baksana ⭐', 'Mochi, bu ev çok güzel! 🏡'];
 Home.updateParty = (dt) => {
-  const pt = Home.party; if (!pt) return; pt.t += dt; const f = Home.fire;
+  const pt = Home.party; if (!pt) return; pt.t += dt; const f = pt.center;
   for (const n of pt.npcs) {
     const m = n.m, tx = n.pad.x, tz = n.pad.z, dx = tx - m.position.x, dz = tz - m.position.z, d = Math.hypot(dx, dz);
     if (!n.seated) { if (d < 0.25) n.seated = true; else { const sp = Math.min(d, 3.4 * dt); m.position.x += dx / d * sp; m.position.z += dz / d * sp; m.rotation.y = Math.atan2(dx, dz); animCreature(m, G.time, 'idle', 2.2); } }
-    else { m.position.y = lerp(m.position.y, 0.2, Math.min(1, dt * 6)); m.rotation.y += angWrap(Math.atan2(f.x - tx, f.z - tz) - m.rotation.y) * Math.min(1, dt * 4); animCreature(m, G.time, 'idle', 0.5); n.say -= dt; if (n.say <= 0) { n.say = 7 + Math.random() * 5; Labels.temp(pick(PARTY_LINES), 'bubble', (v) => v.set(m.position.x, m.position.y + 2.4, m.position.z), 4.2); } }
+    else { m.position.y = lerp(m.position.y, pt.y, Math.min(1, dt * 6)); m.rotation.y += angWrap(Math.atan2(f.x - tx, f.z - tz) - m.rotation.y) * Math.min(1, dt * 4); animCreature(m, G.time, 'idle', 0.5); n.say -= dt; if (n.say <= 0) { n.say = 7 + Math.random() * 5; Labels.temp(pick(PARTY_LINES), 'bubble', (v) => v.set(m.position.x, m.position.y + 2.4, m.position.z), 4.2); } }
   }
   pt.confetti -= dt; if (pt.confetti <= 0) { pt.confetti = 3.5; FX.confetti(f.x + rand(-3, 3), 4 + rand(0, 2), f.z + rand(-3, 3), 18); }
   if (pt.t >= pt.dur) Home.endParty();
 };
 Home.endParty = () => {
   const pt = Home.party; if (!pt) return; Home.party = null; const w = Home.w;
-  pt.npcs.forEach((n) => w.group.remove(n.m)); save.settings.time = pt.prevTime; G.reapplyTod && G.reapplyTod();
-  const n = pt.npcs.length, c = 25 * n; addCoins(c); P.energy = Math.min(Math.max(P.energy, maxEn()), maxEn() * 1.3);
+  pt.npcs.forEach((n) => w.group.remove(n.m)); (pt.cush || []).forEach((c) => w.group.remove(c)); save.settings.time = pt.prevTime; G.reapplyTod && G.reapplyTod();
+  const n = pt.npcs.length, c = (pt.house ? 20 : 25) * n; addCoins(c); P.energy = Math.min(Math.max(P.energy, maxEn()), maxEn() * 1.3);
   const gifts = []; pt.npcs.forEach(() => { const id = pick(Object.keys(FOODS)); save.food[id] = (save.food[id] || 0) + 1; gifts.push(FOODS[id].icon); }); save.seen.parties = (save.seen.parties || 0) + 1; queueSave();
   celebrate(P.pos.x, P.pos.y, P.pos.z, true, 'Ne güzel gece! 🌙'); G.ui.toast(`🌙 Parti bitti! +${c} 🪙 • hediye yemekler ${gifts.join(' ')} • ${save.seen.parties}. parti`, 'gold');
 };
@@ -317,8 +367,8 @@ Home.openBuild = () => {
 Ex.acts.hbuild = () => {
   const H = save.home, s = HOME_STAGES[H.stage]; if (!s) return; if (save.wood < s.wood) { G.ui.toast(`🪵 ${s.wood} odun lazım (sende ${save.wood}).`); return; }
   Home.setWood(save.wood - s.wood); H.stage++; queueSave(); Home.rebuild(); Home.openBuild(); Sfx.play('chest'); const O = Home.O;
-  celebrate(O.x, 1, O.z, H.stage >= 3, H.stage >= 3 ? 'Evim hazır! 🏡' : `${s.name} tamam! 🔨`); FX.burst(O.x, 1.5, O.z, [0xc9924e, 0xe0b074, 0xffffff], 24, 6, 0.25, 0.8, 6, 3);
-  if (H.stage >= 3) G.ui.toast('🏡 Evin hazır! Kamp ateşini yakıp pijama partisi yapabilirsin.', 'gold');
+  celebrate(O.x, 1, O.z, H.stage >= 3, H.stage === 3 ? 'Evim hazır! 🏡' : `${s.name} tamam! 🔨`); FX.burst(O.x, 1.5, O.z, [0xc9924e, 0xe0b074, 0xffffff], 24, 6, 0.25, 0.8, 6, 3);
+  if (H.stage === 3) G.ui.toast('🏡 Evin hazır! Kamp ateşini yakıp pijama partisi yapabilirsin. İstersen 2. ve 3. kat da ekleyebilirsin!', 'gold'); if (H.stage === 4) G.ui.toast('🪜 2. kat hazır: iki yataklı yatak odası!', 'gold'); if (H.stage === 5) G.ui.toast('🏰 3 katlı evin tamam! En üstte teras salonu var.', 'gold');
 };
 Ex.acts.hcolor = (d) => { if (!HOME_PAL[d.kind] || !HOME_PAL[d.kind][d.v]) return; save.home[d.kind] = d.v; queueSave(); Home.rebuild(); Home.openBuild(); Sfx.play('click'); };
 Ex.acts.hitem = (d) => {
@@ -352,7 +402,7 @@ Home.update = (dt) => {
   Home.campIt.label = Home.party ? '🎉 Parti sürüyor!' : Home.campT > 0 ? (save.home.stage >= 3 ? '🌙 Pijama Partisi Başlat' : '🌙 Parti için evi bitir') : '🔥 Kamp Ateşini Yak (2 🪵)';
   /* ev içinde çatı kalkar, duvarlar saydamlaşır */
   if (Home.wallMat) {
-    const O = Home.O, inside = Math.abs(P.pos.x - O.x) < Home.HX + 0.4 && Math.abs(P.pos.z - O.z) < Home.HZ + 0.4 && P.pos.y < 4; Home.wallOp = lerp(Home.wallOp, inside ? 0.18 : 1, Math.min(1, dt * 7));
+    const O = Home.O, inside = Math.abs(P.pos.x - O.x) < Home.HX + 0.4 && Math.abs(P.pos.z - O.z) < Home.HZ + 0.4 && P.pos.y < Home.FY + (Home.floors() - 1) * Home.FH + 3.6; Home.wallOp = lerp(Home.wallOp, inside ? 0.18 : 1, Math.min(1, dt * 7));
     Home.wallMat.opacity = Home.wallOp; Home.wallMat.depthWrite = Home.wallOp > 0.6; if (Home.roof) Home.roof.visible = !inside;
     if (inside && !Home.inside) G.ui.toast(save.home.items.bed || save.home.items.sofa ? '🏡 Evine girdin! Yatağa yat, koltuğa otur.' : '🏡 Evine girdin! Tezgahtan eşya ekle.'); Home.inside = inside;
   }

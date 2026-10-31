@@ -152,7 +152,7 @@ function loadWorld(id, opts = {}) {
     const sp = opts.pos || w.spawn; P.pos.set(sp.x, sp.y + (opts.pos ? 0.5 : 0), sp.z); P.vel.set(0, 0, 0); P.respawn.copy(w.spawn); P.respawn.y += 0.2;
     P.inv = 0; P.fly = false; P.rolling = 0; P.standing = null; P.coyote = 0; P.energy = maxEn(); P.hitCd = 0; P.netCd = 0; P.punch = 0; Nets.clear();
     P.yaw = id === 'village' ? Math.PI : Math.PI; cam.yaw = 0; cam.pitch = 0.42; snapCamera();
-    Sfx.setTheme(w.theme === 'village' || id === 'village' ? 'village' : id);
+    Sfx.setTheme(w.theme === 'village' || id === 'village' ? 'village' : (WORLD_META[id] && WORLD_META[id].music) || id);
     G.ui && G.ui.worldChanged(id);
     if (id !== 'village' && !opts.silent) addStat('worlds');
     setTimeout(() => { $('fade').classList.remove('on'); }, 60);
@@ -313,10 +313,10 @@ function rescueFriend(fid, fromNet) {
   save.rescued[fid] = true; queueSave();
   const w = W(); const cage = w && w.cages.find((c) => c.fid === fid); if (cage) { freeCageVisual(cage); FX.confetti(cage.x, cage.y + 1.5, cage.z); celebrate(cage.x, cage.y + 1, cage.z, true, `${f.emoji} Yuppiii! Kurtuldu!`); }
   Sfx.play('rescue'); G.ui.toast(`${f.emoji} ${f.name} kurtarıldı!`, 'gold'); G.ui.friendsChanged();
-  addCoins(60); let giftName = '';
+  addCoins(60 + (f.bonus || 0)); let giftName = '';
   if (f.gift) { save.owned[f.gift.cat + ':' + f.gift.id] = true; giftName = SHOP[f.gift.cat].items.find((i) => i.id === f.gift.id).name + ' + '; }
   setTimeout(() => G.ui.showDialog(f.emoji, f.name, f.line), 600);
-  setTimeout(() => G.ui.toast(`🎁 ${f.name} hediye verdi: ${giftName}60 🪙`, 'gold'), 1500);
+  setTimeout(() => G.ui.toast(`🎁 ${f.name} hediye verdi: ${giftName}${60 + (f.bonus || 0)} 🪙`, 'gold'), 1500);
   if (!fromNet && Net.active) Net.send({ t: 'rescue', f: fid });
   if (rescuedCount() === 5 && !save.finale) { save.finale = true; queueSave(); setTimeout(() => G.ui.openFinale(), 7000); }
   G.ui.abilitiesChanged();
@@ -446,7 +446,7 @@ function updatePlayer(dt) {
   if (P.standing && P.standing.mover) { p.x += P.standing.mover.dx; p.z += P.standing.mover.dz; }
   const d = moveDir(), hasIn = d.lengthSq() > 0.01;
   const veh = P.vehicle ? VEH[P.vehicle] : null;
-  let speed = 7.2; if (P.sprintOn && hasAbility('sprint')) speed = 11.5; if (P.fly) speed = 9.5; if (G.ex) speed *= G.ex.speedMul(); if (veh && !P.fly) speed = veh.speed * (P.sprintOn ? 1.18 : 1);
+  let speed = 21.6; if (P.sprintOn && hasAbility('sprint')) speed = 34.5; if (P.fly) speed = 19; if (G.ex) speed *= G.ex.speedMul(); if (veh && !P.fly) speed = veh.speed * (P.sprintOn ? 1.18 : 1);
   const inMud = P.onGround && !P.standing && w.mudZones.some((m) => Math.hypot(p.x - m.x, p.z - m.z) < m.r);
   if (inMud) { speed *= 0.5; if (Math.hypot(v.x, v.z) > 1 && Math.random() < 0.2) FX.spawn(p.x + rand(-0.3, 0.3), p.y + 0.15, p.z + rand(-0.3, 0.3), rand(-1, 1), rand(1, 3), rand(-1, 1), 0x6b4a2e, 0.22, 0.5, 8); if (G.time - (G.mudMsg || -99) > 8) { G.mudMsg = G.time; G.ui.toast('🟤 Çamur çukuru! Burada yavaşlarsın.'); } }
   const ice = P.onGround && ((P.standing && P.standing.type === 'ice') || (!P.standing && P.groundIce));
@@ -463,8 +463,8 @@ function updatePlayer(dt) {
   }
   // dikey
   if (P.fly) {
-    const up = P.jumpHeld || Input.jumpTouch ? 6.5 : (Input.keys.has('KeyC') || Input.downTouch ? -6.5 : -0.6);
-    v.y = approach(v.y, up, 40 * dt); P.energy -= dt; if (P.energy <= 0) { P.fly = false; G.ui.toast('🪽 Enerji bitti!'); }
+    const up = P.jumpHeld || Input.jumpTouch ? 6.5 : (Input.keys.has('KeyC') || Input.downTouch ? -26 : -22);
+    v.y = approach(v.y, up, (up < 0 ? 140 : 40) * dt); P.energy -= dt; if (P.energy <= 0) { P.fly = false; G.ui.toast('🪽 Enerji bitti!'); }
   } else {
     if (P.onGround) { P.coyote = 0.11; P.jumps = 0; } else { P.coyote = Math.max(0, P.coyote - dt); if (P.coyote <= 0 && P.jumps === 0) P.jumps = 1; }
     tryJump();
@@ -612,7 +612,7 @@ function updateWorld(dt) {
   let hint = null; for (const s of w.signs) if (Math.hypot(p.x - s.x, p.z - s.z) < 4.2 && Math.abs(p.y - s.y) < 3) { hint = s.text; break; }
   G.ui.setHint(hint);
   let best = null, bd = 1e9;
-  for (const it of w.interacts) { const dd = Math.hypot(p.x - it.x, p.z - it.z); if (dd < it.r && dd < bd) { bd = dd; best = it; } }
+  for (const it of w.interacts) { const dd = Math.hypot(p.x - it.x, p.z - it.z); if (dd < it.r && dd < bd && (it.y === undefined || Math.abs(p.y - it.y) < 2.2)) { bd = dd; best = it; } }
   for (const n of w.npcs) { const dd = Math.hypot(p.x - n.x, p.z - n.z); if (dd < 3.2 && dd < bd) { bd = dd; best = { label: `💬 ${FRIENDS[n.fid].name} ile konuş`, fn: () => G.ui.showDialog(FRIENDS[n.fid].emoji, FRIENDS[n.fid].name, npcLine(n.fid)) }; } }
   G.interact = best; G.ui.setInteract(best);
   for (const n of w.npcs) { animCreature(n.mesh, t, 'idle', 1); n.mesh.rotation.y += angDiff(n.mesh.rotation.y, Math.atan2(p.x - n.x, p.z - n.z)) * Math.min(1, dt * 3) * (Math.hypot(p.x - n.x, p.z - n.z) < 8 ? 1 : 0); }
