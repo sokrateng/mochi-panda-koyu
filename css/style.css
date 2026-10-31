@@ -204,3 +204,11 @@ kbd{background:var(--ink);color:#fff;border-radius:8px;padding:2px 8px;font-fami
 #chatForm input{flex:1;min-width:0}
 .round-btn.on{background:var(--leaf)}.round-btn.speak{animation:pulse 1s infinite}
 @media (max-width:700px){#chatLog{top:calc(120px + var(--safe-t));width:min(240px,50vw)}}
+
+/* Telefon yatay: sağ üst düğmeler yatay sıra, sağdaki eylem düğmeleriyle çakışmaz */
+@media (max-height:520px) and (max-width:900px){
+  #hud-right{flex-direction:row!important;flex-wrap:nowrap!important;max-height:none!important;gap:6px}
+  #hud-top{left:130px!important;right:auto!important;transform:none!important;align-items:flex-start!important;max-width:30vw}
+  #emoteRow{top:calc(64px + var(--safe-t))!important;right:12px!important}
+  #mpList{top:calc(120px + var(--safe-t))!important;right:12px!important}
+}

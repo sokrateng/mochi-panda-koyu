@@ -316,10 +316,10 @@ function house(w, x, z, color, fid, rescued) {
   const props = new T.Group(); g.add(props);
   box(props, M(0xffffff), -2.5, 0.42, -2.2, 2.0, 0.28, 3.0); box(props, M(0x8b5a2b), -2.5, 0.2, -2.2, 2.2, 0.28, 3.2); box(props, M(0x8b5a2b), -2.5, 0.75, -3.65, 2.2, 1.1, 0.12);
   box(props, M(0xfff6e3), -2.5, 0.64, -3.1, 1.5, 0.16, 0.7); box(props, M(accent), -2.5, 0.6, -1.7, 2.04, 0.12, 1.7);
-  localBlock(w, o, -2.5, -2.2, 2.3, 3.3, -1.5, 1.0);
+  localBlock(w, o, -2.5, -2.2, 2.3, 3.3, -1.5, 0.75);
   const tb = new T.Group(); tb.position.set(2.0, 0, -0.9); props.add(tb); tb.add(mesh(geo('cyl', 0.9, 0.9, 0.1, 18), M(0xd6a15d), 0, 0.85, 0)); tb.add(mesh(geo('cyl', 0.14, 0.2, 0.75, 8), M(0x8b5a2b), 0, 0.45, 0)); tb.add(mesh(geo('cyl', 0.5, 0.5, 0.06, 14), M(0x8b5a2b), 0, 0.13, 0));
   tb.add(mesh(geo('cyl', 0.22, 0.18, 0.2, 10), M(accent), 0.2, 1.02, 0.1)); tb.add(mesh(geo('sph', 0.12, 8, 6), M(0xff5f5f), -0.35, 0.98, -0.2));
-  localBlock(w, o, 2.0, -0.9, 1.5, 1.5, -1.5, 1.0);
+  localBlock(w, o, 2.0, -0.9, 1.5, 1.5, -1.5, 0.9);
   [[2.0, 0.6], [0.95, -0.9]].forEach(([sx, sz]) => { const st = new T.Group(); st.position.set(sx, 0, sz); props.add(st); st.add(mesh(geo('cyl', 0.3, 0.3, 0.1, 10), M(accent), 0, 0.5, 0)); st.add(mesh(geo('cyl', 0.06, 0.06, 0.45, 6), M(0x8b5a2b), 0, 0.25, 0)); });
   box(props, M(0x7a4a22), 3.55, 1.1, -2.6, 0.7, 2.2, 1.9);
   for (let i = 0; i < 4; i++) for (let j = 0; j < 6; j++) box(props, M([0xff6f61, 0xffd23f, 0x5ec8ff, 0x7ed957, 0xb28bff][(i + j) % 5]), 3.2, 0.35 + i * 0.5, -3.3 + j * 0.28, 0.1, 0.34, 0.2);
@@ -348,7 +348,7 @@ function buildVillage() {
   const vpaths = [[[0, 10], [-31, 4]], [[0, 10], [-27, -14]], [[0, 10], [31, 4]], [[0, 10], [27, -14]], [[0, 10], [0, 33]], [[0, -6], [-20, -28]], [[0, -6], [0, -37]], [[0, -6], [20, -28]]];
   const w = openWorld({
     id: 'village', sky: [0x4fc3ff, 0xd9f6ff], fog: 0xd9f6ff, fogD: 0.0042, water: 0x3fb6e8, hemi: [0xffffff, 0x9acb8a, 0.85], sunI: 0.9, theme: 'village', rx: 100, rz: 100, flats: vflats, paths: vpaths, waterY: -1.2,
-    grass: [0x6bc94a, 0x7fdc58, 0x5ab83e], grassCount: 14000, relief: { pits: 2, mounds: 5, amp: 0.6 },
+    grass: [0x6bc94a, 0x7fdc58, 0x5ab83e], grassCount: 14000, relief: { pits: 2, mounds: 5, amp: 0.6, minBase: 2.6 },
     hills: (x, z) => 1.6 * Math.sin(x * 0.05 + 0.5) * Math.cos(z * 0.045) + 0.9 * Math.sin(x * 0.12 + z * 0.1) * Math.cos(x * 0.07) + 1.4,
     color: (x, z, h, sl, pd) => {
       if (Math.hypot(x, z - 10) < 19) return (Math.floor(x / 2) + Math.floor(z / 2)) % 2 ? 0xe2d8c3 : 0xd8cdb6;

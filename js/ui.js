@@ -274,7 +274,7 @@ showTitle();
   /* Arkadaşın "Bağlantıyı Paylaş" ile kayıt gönderdiyse: onay iste, sonra yükle */
   const hm = /#kod=([0-9A-Za-z.\-+/=_%]+)/.exec(location.hash);
   if (hm) {
-    G.hashCode = decodeURIComponent(hm[1]);
+    try { G.hashCode = decodeURIComponent(hm[1]); } catch (e) { G.hashCode = hm[1]; }
     showScreen(`<div class="panel"><h2>📥 Kayıt bağlantısı bulundu!</h2><p class="sub">Bu bağlantıdaki kayıt yüklensin mi? Bu cihazdaki mevcut kayıt silinir.</p>
       <div class="row" style="justify-content:center;gap:14px"><button class="btn sun" data-act="hashload">✅ Evet, yükle</button><button class="btn ghost" data-act="hashskip">Hayır</button></div></div>`, 'story');
   }

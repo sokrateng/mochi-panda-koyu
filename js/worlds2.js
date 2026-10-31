@@ -68,7 +68,7 @@ function openWorld(cfg) {
   const rr = mulberry(hashStr(cfg.id + 'relief')), rel = Object.assign({ pits: 7, mounds: 10, amp: 1.5 }, cfg.relief || {}), spots = [], pits = [], mounds = [];
   const roomFor = (x, z, r) => !cfg.flats.some((f) => Math.hypot(x - f[0], z - f[1]) < f[3] + r + 2) && pathDist(w.paths, x, z) > r + 4 && Math.hypot(x / cfg.rx, z / cfg.rz) < 0.74 && !spots.some((s) => Math.hypot(x - s[0], z - s[1]) < s[2] + r + 3);
   const place = (n, list, r0, r1, a0, a1, minBase = -99) => { for (let t = 0, k = 0; k < n && t < n * 120; t++) { const x = lerp(-95, 95, rr()), z = lerp(-95, 95, rr()), r = lerp(r0, r1, rr()); if (!roomFor(x, z, r) || cfg.hills(x, z) < minBase) continue; list.push({ x, z, r, a: lerp(a0, a1, rr()) }); spots.push([x, z, r]); k++; } };
-  place(rel.pits, pits, 5, 8, 2.4, 3.4, 4.2); place(rel.mounds, mounds, 7, 12, 2.6, 5.2);
+  place(rel.pits, pits, 5, 8, 2.4, 3.4, rel.minBase ?? 4.2); place(rel.mounds, mounds, 7, 12, 2.6, 5.2);
   w.pits = pits; w.mounds = mounds; const floor = (cfg.waterY ?? -1.2) + 0.9;
   const hfn = (x, z) => {
     let h = cfg.hills(x, z) - 11 * smooth(0.78, 1.0, Math.hypot(x / cfg.rx, z / cfg.rz));

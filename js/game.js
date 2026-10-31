@@ -123,7 +123,14 @@ const MAX_ENERGY = 5;
 /* Karakter boyutu ayarlanabilir: çarpışma kutusu da onunla birlikte büyür/küçülür */
 let HW = 0.38, PH = 1.7;
 const charSize = () => clamp(save.settings.size || 1, 0.6, 1.5);
-function applySize() { const s = charSize(); HW = 0.38 * s; PH = 1.7 * s; if (P.mesh) P.mesh.scale.setScalar(s); }
+function applySize() {
+  const s = charSize(); HW = 0.38 * s; PH = 1.7 * s; if (P.mesh) P.mesh.scale.setScalar(s);
+  const w = G.world; if (!w) return;
+  /* büyüyünce duvar/ağaç içinde kalmasın: en yakın boş yere it */
+  const hit = (x, z) => w.solids.some((o) => o.active && !o.barrier && x + HW > o.minx && x - HW < o.maxx && z + HW > o.minz && z - HW < o.maxz && P.pos.y + PH > o.miny && P.pos.y < o.maxy - 0.05);
+  if (!hit(P.pos.x, P.pos.z)) return;
+  for (let r = 0.2; r <= 3; r += 0.2) for (let a = 0; a < 16; a++) { const x = P.pos.x + Math.cos(a * 0.3927) * r, z = P.pos.z + Math.sin(a * 0.3927) * r; if (!hit(x, z)) { P.pos.x = x; P.pos.z = z; return; } }
+}
 G.applySize = applySize;
 const W = () => G.world;
 
@@ -278,14 +285,15 @@ const Nets = {
       p.x += n.vx * dt; p.y += n.vy * dt; p.z += n.vz * dt; n.m.rotation.x += dt * 8; n.m.rotation.y += dt * 6; n.m.scale.setScalar(1 + Math.min(n.age, 0.6) * 2.4);
       let done = n.age > 1.5 || (w.groundAt && p.y < w.groundAt(p.x, p.z) + 0.1);
       const bo = w.boss;
-      if (!done && bo && bo.alive && bo.state !== 'dead' && Math.hypot(p.x - bo.x, p.z - bo.z) < bo.size * 0.5 + 0.8 && p.y > bo.y - 0.5 && p.y < bo.y + bo.size * 1.2) { netBoss(bo); done = true; }
+      if (!done && bo && bo.alive && bo.state !== 'dead' && bo.state !== 'hurt' && Math.hypot(p.x - bo.x, p.z - bo.z) < bo.size * 0.5 + 0.8 && p.y > bo.y - 0.5 && p.y < bo.y + bo.size * 1.2) { netBoss(bo); done = true; }
       if (!done) for (const b of w.blobs) if (b.alive && !(b.frozen > 0) && Math.hypot(p.x - b.x, p.z - b.z) < 1.5 && Math.abs(p.y - (b.oy + 0.5)) < 1.5) { freezeBlob(b); done = true; break; }
       if (done) { FX.burst(p.x, p.y, p.z, 0xffffff, 6, 3, 0.2, 0.5, 2, 1); scene.remove(n.m); this.list.splice(i, 1); }
     }
   },
 };
 function netBoss(b) {
-  b.state = 'dizzy'; b.t = 0; b.netted = true; b.stars.visible = true; b.net.visible = true; Sfx.play('caught'); G.shake = 0.3;
+  if (b.state === 'hurt') return;
+  b.mesh.visible = true; b.state = 'dizzy'; b.t = 0; b.netted = true; b.stars.visible = true; b.net.visible = true; Sfx.play('caught'); G.shake = 0.3;
   FX.burst(b.x, b.y + b.size * 0.8, b.z, [0xffffff, 0xcfeaff], 22, 7, 0.35, 0.9);
   G.ui.toast(`🕸️ ${b.d.name} ağa yakalandı! Şimdi yanına git ve 👊 vur!`, 'gold');
 }
