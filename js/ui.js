@@ -49,6 +49,9 @@ const ui = (G.ui = {
       const k = id === 'invis' ? P.invisCd / 10 : id === 'roll' ? P.rollCd / 0.55 : id === 'fly' ? 1 - P.energy / MAX_ENERGY : 0; cd.style.transform = `scaleY(${clamp(k, 0, 1)})`;
     });
     const sp = $('tSprint'); sp.classList.toggle('on', !!P.sprintOn); $('tFly').classList.toggle('on', P.fly);
+    $('tNet').classList.toggle('cool', P.netCd > 0); $('tHit').classList.toggle('cool', P.hitCd > 0.05);
+    const eb = $('energyBar'), show = G.mode === 'play' && (P.fly || P.energy < MAX_ENERGY - 0.05); eb.classList.toggle('hidden', !show);
+    if (show) eb.querySelector('i').style.transform = `scaleX(${clamp(P.energy / MAX_ENERGY, 0, 1)})`;
   },
   netChanged() {
     const l = $('mpList'); l.innerHTML = '';
@@ -101,6 +104,7 @@ const ui = (G.ui = {
       return `<button class="item ${sel ? 'sel' : ''} ${own ? '' : 'lock'}" data-act="wpick" data-c="${cat}" data-i="${it.id}"><span class="e">${it.icon}</span>${it.name}<span class="p">${sel ? '✔ Giyili' : own ? 'Senin' : it.price + ' 🪙'}</span></button>`; }).join('');
     cam.yaw = P.yaw + 0.35; Sfx.play('click');
     scrEl.className = 'side clear'; scrEl.innerHTML = `<div class="panel" style="width:min(430px,100%)">${closeBtn}<h2>👗 Gardırop</h2><p class="sub">🪙 ${save.coins} • ${esc(save.name)} için stil seç!</p><div class="tabs">${tabs}</div><div class="items">${items}</div>
+      <p class="note" style="margin-top:12px">📏 Boyut</p>${sizeBox()}
       <div class="row" style="margin-top:14px"><button class="btn small" data-act="close">✔ Bitti</button></div></div>`; Scr.open = true; Scr.kind = 'wardrobe';
   },
   openFinale() {
@@ -110,16 +114,22 @@ const ui = (G.ui = {
       <div class="stack" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap"><button class="btn sun" data-act="home">🏡 Köye Dön</button><button class="btn ghost" data-act="close">Devam Et</button></div></div>`, 'finale');
   },
   openSave() {
-    showScreen(`<div class="panel">${closeBtn}<h2>💾 Kayıt</h2><p class="sub">Oyun bu cihazda otomatik kaydedilir.</p>
-      <p class="note">Başka bir cihazda devam etmek için bu kodu kopyala:</p><textarea id="codeOut" readonly>${exportCode()}</textarea>
-      <div class="row" style="margin:8px 0 16px"><button class="btn small sky" data-act="copy">📋 Kodu Kopyala</button></div>
-      <p class="note">Başka cihazdan kodu buraya yapıştır:</p><textarea id="codeIn" placeholder="MK1...."></textarea><div id="saveMsg" class="note"></div>
-      <div class="row" style="margin-top:8px"><button class="btn small" data-act="load">📥 Kodu Yükle</button><button class="btn small coral" data-act="reset">🗑️ Sıfırla</button></div></div>`, 'save');
+    const chunks = codeChunks(exportCode()).map((c) => `<span>${c}</span>`).join('');
+    showScreen(`<div class="panel">${closeBtn}<h2>💾 Kayıt</h2><p class="sub">Oyun bu cihazda otomatik kaydedilir. Başka cihazda devam etmek için 2 kolay yol var:</p>
+      <p class="note"><span class="stepno">1</span><b>Bağlantı gönder</b> (en kolayı): Bağlantıya dokunan cihazda oyun senin kaydınla açılır.</p>
+      <div class="codecard"><div class="btns"><button class="btn small sun" data-act="sharelink">🔗 Bağlantıyı Paylaş</button><button class="btn small sky" data-act="copylink">📋 Bağlantıyı Kopyala</button></div></div>
+      <p class="note"><span class="stepno">2</span><b>Kısa kod</b>: Diğer cihazda Kayıt panelindeki kutuya yaz (harf büyüklüğü ve çizgiler fark etmez).</p>
+      <div class="codecard"><div class="chunks" id="codeOut">${chunks}</div><div class="btns"><button class="btn small sky" data-act="copy">📋 Kodu Kopyala</button></div></div>
+      <p class="note" style="margin-top:14px"><b>📥 Bu cihaza kayıt getir:</b> diğer cihazdaki kodu yaz ya da yapıştır.</p>
+      <input type="text" id="codeIn" class="codein" placeholder="MOCHI-XXXX-XXXX…" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <div id="saveMsg" class="note" style="min-height:1.4em"></div>
+      <div class="row" style="margin-top:8px"><button class="btn small" data-act="load">📥 Kodu Yükle</button><button class="btn small ghost" data-act="paste">📎 Panodan Yapıştır</button><button class="btn small coral" data-act="reset">🗑️ Sıfırla</button></div></div>`, 'save');
   },
   openSettings() {
     const s = save.settings, tg = (k, l) => `<button class="tab ${s[k] ? 'on' : ''}" data-act="tog" data-k="${k}">${l}: ${s[k] ? 'Açık' : 'Kapalı'}</button>`;
     showScreen(`<div class="panel">${closeBtn}<h2>⚙️ Ayarlar</h2><p class="sub">Oyunu sana göre ayarla.</p>
       <p class="note">Oyuncu adı (arkadaşların görür)</p><input type="text" id="nameIn" maxlength="12" value="${esc(save.name)}"><br><br>
+      <p class="note">Karakter boyutu</p>${sizeBox()}<br>
       <div class="tabs">${tg('music', '🎵 Müzik')}${tg('sfx', '🔊 Ses')}${tg('shadows', '🌓 Gölge')}${tg('chat', '💬 Yazılı sohbet')}</div>
       <p class="note">Gün ışığı</p><div class="seg">${[['morning', '🌅 Sabah'], ['evening', '🌇 Akşam'], ['auto', '🕒 Otomatik']].map(([k, l]) => `<button class="tab ${save.settings.time === k ? 'on' : ''}" data-act="settime" data-k="${k}">${l}</button>`).join('')}</div>
       <p class="note" style="margin-top:12px">Grafik kalitesi</p><div class="seg">${[['high', '✨ Yüksek'], ['low', '🔋 Düşük']].map(([k, l]) => `<button class="tab ${save.settings.quality === k ? 'on' : ''}" data-act="quality" data-k="${k}">${l}</button>`).join('')}</div>
@@ -133,7 +143,7 @@ const ui = (G.ui = {
     showScreen(`<div class="panel">${closeBtn}<h2>🎮 Kontroller</h2><p class="sub">Bilgisayar</p><div class="keys">
       <span><kbd>W A S D</kbd></span><span>Yürü</span><span><kbd>Boşluk</kbd></span><span>Zıpla (havada tekrar: çift zıplama)</span><span><kbd>C</kbd></span><span>Yuvarlan (tahta duvarı kırar)</span>
       <span><kbd>Shift</kbd></span><span>Hızlı koş</span><span><kbd>V</kbd></span><span>Görünmez ol</span><span><kbd>F</kbd></span><span>Uç (Boşluk: yüksel, C: alçal)</span>
-      <span><kbd>E</kbd></span><span>Konuş / kullan</span><span><kbd>1-5</kbd></span><span>Araç seç (kaykay, paten, scooter, bisiklet, araba), <kbd>0</kbd> yürü</span><span><kbd>B</kbd></span><span>Çantayı aç</span><span><kbd>Fare sürükle</kbd></span><span>Kamerayı çevir</span><span><kbd>← →</kbd></span><span>Kamerayı çevir</span></div>
+      <span><kbd>X</kbd></span><span>Vur 👊 (düşmanı uyutur, sersemlemiş boss'a hasar verir)</span><span><kbd>N</kbd></span><span>Ağ at 🕸️ (boss'u ve düşmanı yakalar)</span><span><kbd>E</kbd></span><span>Konuş / kullan</span><span><kbd>1-5</kbd></span><span>Araç seç (kaykay, paten, scooter, bisiklet, araba), <kbd>0</kbd> yürü</span><span><kbd>B</kbd></span><span>Çantayı aç</span><span><kbd>Fare sürükle</kbd></span><span>Kamerayı çevir</span><span><kbd>← →</kbd></span><span>Kamerayı çevir</span></div>
       <p class="sub" style="margin-top:14px">Tablet / Telefon</p><p class="note">Sol tarafta joystick, sağda zıpla ve yetenek düğmeleri. Ekranın boş yerini sürükleyerek kamerayı çevir.</p></div>`, 'controls');
   },
   openMP() {
@@ -167,8 +177,13 @@ const ACT = {
     if (!isOwned(cat, id)) { if (save.coins < it.price) { ui.toast('🪙 Yeterli paran yok. Daha çok topla!'); return; } save.coins -= it.price; save.owned[cat + ':' + id] = true; Sfx.play('buy'); ui.coinsChanged(false); }
     save.equip[cat] = id; G.refreshPanda(); queueSave(); Net.active && Net.send(Net.hello()); FX.burst(P.pos.x, P.pos.y + 1.2, P.pos.z, [0xffe27a, 0xffffff], 10, 3, 0.2, 0.6); ui.openWardrobe(cat);
   },
-  copy: () => { const t = $('codeOut'); t.select(); (navigator.clipboard ? navigator.clipboard.writeText(t.value) : Promise.reject()).then(() => ui.toast('📋 Kopyalandı!')).catch(() => { document.execCommand('copy'); ui.toast('📋 Kopyalandı!'); }); },
-  load: () => { const ok = importCode($('codeIn').value); $('saveMsg').innerHTML = ok ? '<span class="ok">✅ Yüklendi! Oyun yeniden başlıyor…</span>' : '<span class="bad">⚠️ Kod geçersiz.</span>'; if (ok) setTimeout(() => location.reload(), 900); },
+  copy: () => copyText(prettyCode(), '📋 Kod kopyalandı!'),
+  copylink: () => copyText(saveLink(), '🔗 Bağlantı kopyalandı! Arkadaşına yapıştırıp gönder.'),
+  sharelink: () => { const url = saveLink(); if (navigator.share) navigator.share({ title: 'Mochi\'nin Panda Köyü', text: `${save.name} kaydı: bu bağlantıya dokun, oyun kayıtla açılsın! 🐼`, url }).catch(() => {}); else copyText(url, '🔗 Bağlantı kopyalandı! Arkadaşına yapıştırıp gönder.'); },
+  paste: async () => { try { const t = await navigator.clipboard.readText(); $('codeIn').value = t.trim(); ui.toast('📎 Yapıştırıldı. Şimdi "Kodu Yükle"ye dokun.'); } catch (e) { ui.toast('📎 Yapıştırma izni verilmedi. Kutuya basılı tutup yapıştır.'); } },
+  load: () => { const ok = importCode($('codeIn').value); $('saveMsg').innerHTML = ok ? '<span class="ok">✅ Yüklendi! Oyun yeniden başlıyor…</span>' : '<span class="bad">⚠️ Kod tam okunamadı. Başındaki MOCHI ve tüm gruplar yazılı mı? Bağlantı yöntemi daha kolay olabilir.</span>'; if (ok) setTimeout(() => location.reload(), 900); },
+  hashload: () => { const ok = importCode(G.hashCode || ''); history.replaceState(null, '', location.pathname); G.hashCode = ''; if (ok) { closeScreen(); ui.toast('✅ Kayıt yüklendi!'); setTimeout(() => location.reload(), 600); } else { ui.toast('⚠️ Bağlantıdaki kayıt okunamadı.'); closeScreen(); } },
+  hashskip: () => { history.replaceState(null, '', location.pathname); G.hashCode = ''; showTitle(); },
   reset: (d, b) => { if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = '⚠️ Emin misin? Tekrar dokun'; return; } localStorage.removeItem(SAVE_KEY); location.reload(); },
   tog: (d) => { save.settings[d.k] = !save.settings[d.k]; Sfx.applySettings(); queueSave(); keepName(); ui.openSettings(); },
   diff: (d) => { save.difficulty = d.k; queueSave(); keepName(); ui.openSettings(); },
@@ -180,8 +195,18 @@ const ACT = {
   play: () => startPlaying(),
   startgame: () => { save.intro = true; queueSave(); closeScreen(); },
 };
+const saveLink = () => `${location.origin}${location.pathname}#kod=${exportCode()}`;
+function copyText(text, msg) {
+  const done = () => ui.toast(msg);
+  const fallback = () => { const t = document.createElement('textarea'); t.value = text; t.style.cssText = 'position:fixed;left:-999px;top:0'; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) { ui.toast('⚠️ Kopyalanamadı. Kodu elle yaz: ' + text.slice(0, 24) + '…'); } t.remove(); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done).catch(fallback); else fallback();
+}
 function keepName() { const n = $('nameIn'); if (n) { save.name = cleanName(n.value); queueSave(); } }
-scrEl.addEventListener('input', (e) => { if (e.target.id === 'nameIn') { save.name = cleanName(e.target.value); queueSave(); } });
+const sizeBox = () => `<div class="sizebox"><span>🐜</span><input type="range" id="sizeIn" min="60" max="150" step="5" value="${Math.round((save.settings.size || 1) * 100)}" aria-label="Karakter boyutu"><span>🐘</span><b id="sizeVal">${Math.round((save.settings.size || 1) * 100)}%</b></div>`;
+scrEl.addEventListener('input', (e) => {
+  if (e.target.id === 'nameIn') { save.name = cleanName(e.target.value); queueSave(); }
+  if (e.target.id === 'sizeIn') { save.settings.size = clamp(+e.target.value / 100, 0.6, 1.5); $('sizeVal').textContent = Math.round(save.settings.size * 100) + '%'; G.applySize(); queueSave(); Net.active && Net.send(Net.hello()); }
+});
 scrEl.addEventListener('change', (e) => { if (e.target.id === 'nameIn') { save.name = cleanName(e.target.value); queueSave(); Net.active && Net.send(Net.hello()); } });
 
 /* ---------- Başlangıç ---------- */
@@ -217,13 +242,16 @@ ui.openBag = function () {
   if (Scr.open && Scr.kind === 'bag') { closeScreen(); return; }
   const items = [{ id: '', icon: '🚶', name: 'Yürü', note: 'Aracı çantaya koy' }, ...VEH_ORDER.map((id) => ({ id, icon: VEH[id].icon, name: VEH[id].name, note: VEH[id].desc }))]
     .map((v, i) => `<button class="item ${(P.vehicle || '') === v.id ? 'sel' : ''}" data-act="veh" data-v="${v.id}"><span class="e">${v.icon}</span>${v.name}<span class="p" style="color:var(--ink-soft);font-size:.72rem;font-family:var(--font-b)">${i ? '[' + i + '] ' : '[0] '}${v.note}</span></button>`).join('');
-  showScreen(`<div class="panel">${closeBtn}<h2>🎒 Maceracı Çantası</h2><p class="sub">Mochi'nin zorunlu çantasında 5 araç var. Birini seç, hemen çıksın!</p><div class="items" style="grid-template-columns:repeat(auto-fill,minmax(118px,1fr))">${items}</div>
+  const net = `<div class="items" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:10px"><button class="item" data-act="gear" data-g="net"><span class="e">🕸️</span>Yakalama Ağı<span class="p" style="color:var(--ink-soft);font-size:.72rem;font-family:var(--font-b)">[N] Boss'u ve düşmanı yakalar</span></button><button class="item" data-act="gear" data-g="hit"><span class="e">👊</span>Yumruk<span class="p" style="color:var(--ink-soft);font-size:.72rem;font-family:var(--font-b)">[X] Vur!</span></button></div>`;
+  showScreen(`<div class="panel">${closeBtn}<h2>🎒 Maceracı Çantası</h2><p class="sub">Mochi'nin zorunlu çantasında 5 araç ve 2 aksesuar var.</p><div class="items" style="grid-template-columns:repeat(auto-fill,minmax(118px,1fr))">${items}</div>
+    <p class="note" style="margin-top:12px"><b>🧰 Aksesuarlar</b> — dokununca hemen kullanılır. Ağ atınca boss sersemler (7 sn), sonra yanına gidip vurursun.</p>${net}
     <p class="note" style="margin-top:12px">Araçlar yürümekten hızlıdır ama yuvarlanma ve uçma araçlarla yapılmaz. Tahta kapıları kırmak için aracı çantaya koy. Klavyede 1-5 tuşları araç seçer, 0 yürütür.</p></div>`, 'bag');
 };
 ui.vehicleChanged = function () { $('btnBag').textContent = P.vehicle ? VEH[P.vehicle].icon : '🎒'; $('btnBag').classList.toggle('on', !!P.vehicle); };
 Object.assign(ACT, {
   bag: () => ui.openBag(),
   veh: (d) => { closeScreen(); selectVehicle(d.v || null); },
+  gear: (d) => { closeScreen(); setTimeout(() => (d.g === 'net' ? G.act.net() : G.act.hit()), 60); },
   quality: (d) => { save.settings.quality = d.k; queueSave(); keepName(); G.applyQuality(); ui.openSettings(); },
   settime: (d) => { save.settings.time = d.k; queueSave(); keepName(); G.reapplyTod(); ui.openSettings(); },
   timecycle: () => { save.settings.time = G.tod === 'morning' ? 'evening' : 'morning'; queueSave(); G.reapplyTod(); ui.toast(save.settings.time === 'morning' ? '🌅 Sabah oldu!' : '🌇 Akşam oldu!'); closeScreen(); },
@@ -242,3 +270,13 @@ G.start();
 G.dailyMsg = ensureDaily();
 G.loadWorld('village', { instant: true, silent: true });
 showTitle();
+{
+  /* Arkadaşın "Bağlantıyı Paylaş" ile kayıt gönderdiyse: onay iste, sonra yükle */
+  const hm = /#kod=([0-9A-Za-z.\-+/=_%]+)/.exec(location.hash);
+  if (hm) {
+    G.hashCode = decodeURIComponent(hm[1]);
+    showScreen(`<div class="panel"><h2>📥 Kayıt bağlantısı bulundu!</h2><p class="sub">Bu bağlantıdaki kayıt yüklensin mi? Bu cihazdaki mevcut kayıt silinir.</p>
+      <div class="row" style="justify-content:center;gap:14px"><button class="btn sun" data-act="hashload">✅ Evet, yükle</button><button class="btn ghost" data-act="hashskip">Hayır</button></div></div>`, 'story');
+  }
+}
+G.ready = true;

@@ -64,15 +64,42 @@ function addGrass(w, colors, count) {
 function openWorld(cfg) {
   const w = newWorld(cfg.id, { sky: cfg.sky, fog: cfg.fog, fogD: cfg.fogD, water: cfg.water, hemi: cfg.hemi, sunI: cfg.sunI, theme: cfg.theme, waterY: cfg.waterY ?? -1.2, minY: (cfg.waterY ?? -1.2) - 1.4 });
   w.paths = cfg.paths || []; w.flats = cfg.flats; w.surfaceAt = cfg.surfaceAt || null;
+  /* Yeryüzü: dalgalı tepeler + çukurlar (alt kısmı çamur) + tümsekler. Düz alanlara ve yollara dokunmaz. */
+  const rr = mulberry(hashStr(cfg.id + 'relief')), rel = Object.assign({ pits: 7, mounds: 10, amp: 1.5 }, cfg.relief || {}), spots = [], pits = [], mounds = [];
+  const roomFor = (x, z, r) => !cfg.flats.some((f) => Math.hypot(x - f[0], z - f[1]) < f[3] + r + 2) && pathDist(w.paths, x, z) > r + 4 && Math.hypot(x / cfg.rx, z / cfg.rz) < 0.74 && !spots.some((s) => Math.hypot(x - s[0], z - s[1]) < s[2] + r + 3);
+  const place = (n, list, r0, r1, a0, a1, minBase = -99) => { for (let t = 0, k = 0; k < n && t < n * 120; t++) { const x = lerp(-95, 95, rr()), z = lerp(-95, 95, rr()), r = lerp(r0, r1, rr()); if (!roomFor(x, z, r) || cfg.hills(x, z) < minBase) continue; list.push({ x, z, r, a: lerp(a0, a1, rr()) }); spots.push([x, z, r]); k++; } };
+  place(rel.pits, pits, 5, 8, 2.4, 3.4, 4.2); place(rel.mounds, mounds, 7, 12, 2.6, 5.2);
+  w.pits = pits; w.mounds = mounds; const floor = (cfg.waterY ?? -1.2) + 0.9;
   const hfn = (x, z) => {
     let h = cfg.hills(x, z) - 11 * smooth(0.78, 1.0, Math.hypot(x / cfg.rx, z / cfg.rz));
+    h += rel.amp * (Math.sin(x * 0.115 + z * 0.06 + 1.3) * Math.cos(z * 0.1 - x * 0.04) + 0.5 * Math.sin(x * 0.21 - z * 0.17));
+    for (const m of mounds) { const d = Math.hypot(x - m.x, z - m.z); if (d < m.r) h += m.a * (1 - smooth(0, m.r, d)); }
+    for (const p of pits) { const d = Math.hypot(x - p.x, z - p.z); if (d < p.r) h -= Math.min(p.a * (1 - smooth(p.r * 0.42, p.r, d)), Math.max(0, h - floor)); }
     for (const f of cfg.flats) h = flatBlend(h, x, z, f);
     return h;
   };
-  makeTerrain(w, { half: 120, step: save.settings.quality === 'low' ? 3 : 2, hfn, color: (x, z, h, sl) => cfg.color(x, z, h, sl, pathDist(w.paths, x, z)) });
+  pits.forEach((p) => addMud(w, p.x, p.z, p.r * 0.5));
+  const mudAt = (x, z) => w.mudZones.some((m) => Math.hypot(x - m.x, z - m.z) < m.r);
+  makeTerrain(w, { half: 120, step: save.settings.quality === 'low' ? 3 : 2, hfn, color: (x, z, h, sl) => (mudAt(x, z) ? 0x6b4a2e : pits.some((p) => Math.hypot(x - p.x, z - p.z) < p.r * 0.75) ? 0x8a6a42 : cfg.color(x, z, h, sl, pathDist(w.paths, x, z))) });
   if (cfg.grass) addGrass(w, cfg.grass, cfg.grassCount || 16000);
   return w;
 }
+/* Yol kenarlarına dikenli tuzaklar ve gökyüzüne enerji balonları */
+function sprinkleHazards(w, nTraps, nBalloons, avoid = []) {
+  const pr = mulberry(hashStr(w.id + 'hz')), cols = [0xff5f8d, 0xffd23f, 0x5ec8ff, 0x7ed957, 0xb28bff, 0xff9a3d];
+  for (let k = 0, t = 0; k < nTraps && t < 400; t++) {
+    const p = pick2(w.paths, pr), i = Math.floor(pr() * (p.length - 1)), u = 0.2 + pr() * 0.6, ax = p[i][0], az = p[i][1], bx = p[i + 1][0], bz = p[i + 1][1];
+    const dx = bx - ax, dz = bz - az, l = Math.hypot(dx, dz) || 1, off = (pr() < 0.5 ? -1 : 1) * 1.7, x = ax + dx * u - (dz / l) * off, z = az + dz * u + (dx / l) * off;
+    if (Math.hypot(x, z - 72) < 16 || w.flats.some((f) => Math.hypot(x - f[0], z - f[1]) < f[2] + 4) || avoid.some((a) => Math.hypot(x - a[0], z - a[1]) < a[2]) || w.traps.some((q) => Math.hypot(x - q.x, z - q.z) < 14) || w.mudZones.some((m) => Math.hypot(x - m.x, z - m.z) < m.r + 2)) continue;
+    addTrap(w, x, gy(w, x, z), z); k++;
+  }
+  for (let k = 0, t = 0; k < nBalloons && t < 600; t++) {
+    const x = lerp(-90, 90, pr()), z = lerp(-90, 90, pr()); if (Math.hypot(x, z - 72) < 10) continue;
+    const g = gy(w, x, z); if (g < -0.5 || w.balloons.some((b) => Math.hypot(x - b.x, z - b.z) < 12)) continue;
+    addBalloon(w, x, g + 6 + pr() * 9, z, cols[Math.floor(pr() * cols.length)]); k++;
+  }
+}
+const pick2 = (arr, r) => arr[Math.floor(r() * arr.length)];
 const gy = (w, x, z) => w.groundAt(x, z);
 function scatterT(w, n, fn, ex = [], o = {}) {
   n = Math.ceil(n * (save.settings.quality === 'low' ? 0.55 : 1));
@@ -85,7 +112,7 @@ function scatterT(w, n, fn, ex = [], o = {}) {
     fn(x, h, z); placed++;
   }
 }
-const exclusions = (w) => w.flats.map((f) => [f[0], f[1], f[2] + 3]);
+const exclusions = (w) => w.flats.map((f) => [f[0], f[1], f[2] + 3]).concat((w.pits || []).map((p) => [p.x, p.z, p.r + 2]), w.traps.map((t) => [t.x, t.z, 3]));
 function coinsAlong(w, pts, every = 4) {
   for (let s = 0; s < pts.length - 1; s++) {
     const [ax, az] = pts[s], [bx, bz] = pts[s + 1], len = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.floor(len / every));
@@ -103,6 +130,7 @@ function hut(w, cx, cz, door, inner) {
   const fh = gy(w, cx, cz), top = fh + 5, st = { h: 9, type: 'stone', color: 0x6d6a80, top: 0x8c88a2 };
   const walls = [solid(w, cx, top, cz - 3.5, 9, 1, st), solid(w, cx - 4, top, cz, 1, 8, st), solid(w, cx + 4, top, cz, 1, 8, st), solid(w, cx - 3, top, cz + 3.5, 3, 1, st), solid(w, cx + 3, top, cz + 3.5, 3, 1, st)];
   const d = door === 'barrier' ? addBarrier(w, cx, fh, cz + 3.5, 3, 1.1, 5) : addBreakable(w, cx, fh, cz + 3.5, 3, 1, 5);
+  addBeacon(w, cx, fh, cz + 1, door === 'barrier' ? 0xb28bff : 0xffb347, door === 'barrier' ? 52 : 34);
   const rec = { cx, cz, fh, walls, door: d, kind: door }; (w.huts || (w.huts = [])).push(rec);
   walls.forEach((s) => { s.hutWall = true; s.hut = rec; }); d.hutDoor = true; d.hut = rec;
   inner(fh);
@@ -142,10 +170,12 @@ function buildW1() {
   w.bossDef = { kind: 'devfare', name: 'Dev Fare', x: 0, y: gy(w, 0, -62), z: -62, arena: A };
   hut(w, 66, -8, 'breakable', (fh) => { addChest(w, 'w1h', 66, fh, -10); coinRingG(w, 66, -10, 2, 6); });
   signAt(w, 58, -3, '🌀 Gizli kulübe! Kapıyı yuvarlanarak kır (C).');
-  hut(w, -74, -34, 'breakable', (fh) => { addChest(w, 'w1g', -74, fh, -36); addCoin(w, -74, fh + 1.6, -34, true); });
+  hut(w, -74, -34, 'barrier', (fh) => { addChest(w, 'w1g', -74, fh, -36); addCoin(w, -74, fh + 1.6, -34, true); });
+  signAt(w, -66, -29, '👻 Sihirli perde! Görünmez ol (V) ve içeri gir. Mor ışık sütununu takip et!');
   chestAt(w, 'w1a', -30, -34); chestAt(w, 'w1b', 52, 52); chestAt(w, 'w1c', 70, -52);
   paths.forEach((p) => coinsAlong(w, p, 5)); coinRingG(w, -30, -34, 3, 8); coinRingG(w, 52, 52, 3, 8); coinRingG(w, 70, -52, 3, 8);
   coinRingG(w, 0, -62, 20, 18);
+  sprinkleHazards(w, 7, 22, [[0, -62, 34]]);
   const ex = exclusions(w).concat([[0, -86, 6], [-9, 70, 5]]);
   const groves = [[-40, 60], [45, 38], [-60, -8], [38, -20], [60, 10], [-20, -50], [30, -56], [-50, 55], [70, 62], [-84, 20], [20, 88], [-30, 86], [84, -30], [-90, -60]];
   groves.forEach(([cx, cz]) => { for (let i = 0; i < 6; i++) { const x = cx + w.rng() * 11 - 5.5, z = cz + w.rng() * 11 - 5.5, h = gy(w, x, z); if (h > 0.6 && Math.hypot(x, z + 62) > 36) bamboo(w, x, h, z, 5 + w.rng() * 3); } });
@@ -186,11 +216,12 @@ function buildW2() {
   signAt(w, -22, -38, '👻 Sihirli perde! Görünmez ol (V) ve içeri gir.');
   chestAt(w, 'w2a', 56, -20); chestAt(w, 'w2b', -50, 60); chestAt(w, 'w2c', 80, 70);
   paths.forEach((p) => coinsAlong(w, p, 5)); coinRingG(w, 56, -20, 3, 8); coinRingG(w, -50, 60, 3, 8); coinRingG(w, 80, 70, 3, 8); coinRingG(w, 28, -62, 20, 18);
+  sprinkleHazards(w, 8, 22, [[28, -62, 34]]);
   const ex = exclusions(w).concat([[28, -86, 6], [-9, 70, 5]]);
   const cols = [0x7a5cff, 0x34d8ff, 0xff5fd2, 0x4af0a0];
   scatterT(w, 90, (x, h, z) => crystal(w, x, h, z, pick(cols), 0.7 + w.rng() * 0.9), ex);
   scatterT(w, 50, (x, h, z) => mushroom(w, x, h, z, 0.9 + w.rng() * 1.0, pick([0x7aa0ff, 0xff7ad9, 0x6fffc0]), true), ex);
-  scatterT(w, 40, (x, h, z) => { const c = mesh(geo('cone', 1.1, 7 + w.rng() * 7, 6), M(0x5a4f86), x, h + 3, z); c.castShadow = true; addD(w, c); }, ex);
+  scatterT(w, 40, (x, h, z) => { const ht = 7 + w.rng() * 7, c = mesh(geo('cone', 1.1, ht, 6), M(0x5a4f86), x, h + 3, z); c.castShadow = true; addD(w, c); blockAt(w, x, h, z, 0.8, ht * 0.6); }, ex);
   scatterT(w, 30, (x, h, z) => rock(w, x, h, z, 0.8 + w.rng() * 1.6, 0x6a6490), ex);
   [[0, 3, 66, 0x7ad0ff], [-30, 3, 18, 0x9a7cff], [10, 3, 2, 0xff7ad9], [28, 3, -40, 0x9a7cff], [-64, 3, 14, 0xffe27a], [70, 3, 30, 0x4fe0ff]].forEach(([x, up, z, c]) => w.lights.push({ x, y: gy(w, x, z) + up + 2, z, c }));
   w.fireflies = true;
@@ -225,6 +256,7 @@ function buildW3() {
   hut(w, 62, 44, 'breakable', (fh) => { addChest(w, 'w3h', 62, fh, 42); coinRingG(w, 62, 42, 2, 6); });
   chestAt(w, 'w3a', -70, 50); chestAt(w, 'w3b', 40, -50); chestAt(w, 'w3c', -80, -30);
   paths.forEach((p) => coinsAlong(w, p, 5)); coinRingG(w, -70, 50, 3, 8); coinRingG(w, 40, -50, 3, 8); coinRingG(w, -80, -30, 3, 8); coinRingG(w, -30, -62, 20, 18);
+  sprinkleHazards(w, 7, 22, [[-30, -62, 34], [-48, 6, 28]]);
   const ex = exclusions(w).concat([[-30, -86, 6], [-9, 70, 5]]);
   scatterT(w, 110, (x, h, z) => pine(w, x, h, z, 0.9 + w.rng() * 0.9), ex);
   scatterT(w, 40, (x, h, z) => iceSpike(w, x, h, z, 0.8 + w.rng() * 1.2), ex);

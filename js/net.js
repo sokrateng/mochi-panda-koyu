@@ -52,7 +52,7 @@ const Voice = {
 const Net = {
   active: false, isHost: false, peer: null, conns: new Map(), players: new Map(), code: '', id: '', status: 'idle', sendT: 0, hostConn: null, max: 15, error: '',
   wantRoom: false, clientId: '', sid: '', retryTimer: 0, lastRecv: 0, awayLocal: false,
-  hello() { return { t: 'hello', name: cleanName(save.name), equip: save.equip, w: G.world ? G.world.id : 'village', v: Voice.on ? 1 : 0, sid: this.sid }; },
+  hello() { return { t: 'hello', name: cleanName(save.name), equip: save.equip, w: G.world ? G.world.id : 'village', v: Voice.on ? 1 : 0, sid: this.sid, sz: save.settings.size || 1 }; },
   setStatus(s, err = '') {
     const was = this.status; this.status = s; this.error = err;
     if (s === 'reconnecting' && was !== 'reconnecting') G.ui.toast('🔄 Bağlantı yeniden kuruluyor… Odadan ayrılmadın.');
@@ -91,7 +91,7 @@ const Net = {
       this.conns.set(c.peer, c);
       const p = this.players.get(c.peer); if (p) { clearTimeout(p.dropTimer); p.away = false; this.refreshLabel(p); }
       c.send({ ...this.hello(), id: this.id });
-      this.players.forEach((q, id) => { if (id !== c.peer) c.send({ t: 'hello', id, name: q.name, equip: q.equip, w: q.w, v: q.v ? 1 : 0 }); });
+      this.players.forEach((q, id) => { if (id !== c.peer) c.send({ t: 'hello', id, name: q.name, equip: q.equip, w: q.w, v: q.v ? 1 : 0, sz: q.sz || 1 }); });
       G.ui.netChanged();
     });
     c.on('data', (d) => this.onMsg(d, c));
@@ -156,7 +156,7 @@ const Net = {
       case 'hello': {
         const sid = typeof d.sid === 'string' ? d.sid.slice(0, 16) : '';
         if (sid) for (const [oid, op] of [...this.players]) if (oid !== d.id && op.sid === sid) { this.dropPlayer(oid, true); if (this.isHost) this.conns.forEach((c) => c.open && c.send({ t: 'bye', id: oid })); }
-        this.upsert(d.id, { name: cleanName(d.name), equip: cleanEquip(d.equip), w: String(d.w), v: d.v ? 1 : 0, sid }); break; }
+        this.upsert(d.id, { name: cleanName(d.name), equip: cleanEquip(d.equip), w: String(d.w), v: d.v ? 1 : 0, sid, sz: clamp(Number(d.sz) || 1, 0.6, 1.5) }); break; }
       case 'chat': { const p = this.players.get(d.id), text = cleanChat(d.m); if (p && text && save.settings.chat) { G.ui.chatLine(p.name, text); if (p.mesh) Labels.temp(text, 'bubble', (v) => v.set(p.mesh.position.x, p.mesh.position.y + 3.1, p.mesh.position.z), 5); } break; }
       case 'away': { const p = this.players.get(d.id); if (p) { p.away = !!d.a; this.refreshLabel(p); } break; }
       case 'st': {
@@ -176,6 +176,7 @@ const Net = {
     Object.assign(p, info);
     if (!p.mesh) { p.mesh = makePanda(p.equip); scene.add(p.mesh); p.mesh.visible = false; p.label = Labels.make(p.name, ''); p.label.getPos = (v) => v.set(p.mesh.position.x, p.mesh.position.y + 2.5, p.mesh.position.z); }
     else if (changed) setEquip(p.mesh, p.equip);
+    if (p.sz) p.mesh.scale.setScalar(p.sz);
     this.refreshLabel(p); if (p.v && Voice.on && this.id < id) Voice.callPeer(id);
     G.ui.netChanged();
   },

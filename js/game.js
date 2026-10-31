@@ -3,21 +3,21 @@
 const canvas = $('game');
 const isTouch = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
 let renderer;
-try {
-  renderer = new T.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-} catch (e) {
-  document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;inset:0;display:grid;place-items:center;font:800 1.4rem Nunito,sans-serif;text-align:center;padding:20px">Tarayıcın 3B (WebGL) desteklemiyor. Chrome, Edge veya Safari ile dene. 🐼</div>');
-  throw e;
+/* iPhone/iPad Safari belleği sınırlı: önce hafif ayarlarla, olmazsa en hafif ayarlarla dene */
+for (const opts of [{ antialias: !isTouch, powerPreference: 'default' }, { antialias: false, powerPreference: 'low-power' }]) {
+  try { renderer = new T.WebGLRenderer({ canvas, ...opts }); break; } catch (e) { renderer = null; }
 }
-const pixelRatio = () => (save.settings.quality === 'low' ? 1 : Math.min(window.devicePixelRatio || 1, isTouch ? 1.75 : 2));
+if (!renderer) { window.__bootError && window.__bootError('WebGL başlatılamadı'); throw new Error('WebGL yok'); }
+canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); setTimeout(() => location.reload(), 1200); });
+const pixelRatio = () => (save.settings.quality === 'low' ? 1 : Math.min(window.devicePixelRatio || 1, isTouch ? 1.5 : 2));
 renderer.setPixelRatio(pixelRatio());
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = isTouch ? T.PCFShadowMap : T.PCFSoftShadowMap;
 renderer.outputEncoding = T.sRGBEncoding; renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.88;
 const scene = new T.Scene();
 const camera = new T.PerspectiveCamera(60, 1, 0.1, 700);
 const hemi = new T.HemisphereLight(0xffffff, 0x88aa88, 0.8); scene.add(hemi);
 const sun = new T.DirectionalLight(0xfff2d6, 0.9); sun.castShadow = true; sun.shadow.mapSize.set(isTouch ? 1024 : 2048, isTouch ? 1024 : 2048);
-Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 140 }); sun.shadow.bias = -0.0006; scene.add(sun, sun.target);
+Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 140 }); sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.05; scene.add(sun, sun.target);
 
 /* gökyüzü kubbesi */
 const skyGeo = new T.SphereGeometry(400, 16, 12);
@@ -120,7 +120,11 @@ const P = (G.player = {
 const cam = { yaw: 0, pitch: 0.42, dist: 9.5, pos: new T.Vector3(), target: new T.Vector3(), dragging: false };
 const Input = { keys: new Set(), tx: 0, tz: 0, jumpTouch: false, downTouch: false, interact: false };
 const MAX_ENERGY = 5;
-const HW = 0.38, PH = 1.7;
+/* Karakter boyutu ayarlanabilir: çarpışma kutusu da onunla birlikte büyür/küçülür */
+let HW = 0.38, PH = 1.7;
+const charSize = () => clamp(save.settings.size || 1, 0.6, 1.5);
+function applySize() { const s = charSize(); HW = 0.38 * s; PH = 1.7 * s; if (P.mesh) P.mesh.scale.setScalar(s); }
+G.applySize = applySize;
 const W = () => G.world;
 
 /* ---------- Dünya yükleme ---------- */
@@ -134,12 +138,12 @@ function loadWorld(id, opts = {}) {
     w.lights.slice(0, 6).forEach((l) => { const pl = new T.PointLight(l.c, 1.1, 30, 1.6); pl.position.set(l.x, l.y, l.z); w.group.add(pl); });
     if (id === 'w2') { w.fireflies = true; }
     spawnBoss(w);
-    if (save.settings.easy) { w.breakables.forEach((s) => { s.active = false; s.mesh.visible = false; }); w.barriers.forEach((s) => { s.active = false; s.mesh.visible = false; s.edge.visible = false; }); }
+    if (save.settings.easy) { w.breakables.forEach((s) => { s.active = false; s.mesh.visible = false; }); w.barriers.forEach((s) => { s.active = false; s.mesh.visible = false; s.edge.visible = false; s.extra.visible = false; }); }
     w.cages.forEach((c) => { if (save.rescued[c.fid]) freeCageVisual(c, true); });
     const today = todayStr(); w.chests.forEach((c) => { if (save.chests[c.key] === today) { c.open = true; c.lid.rotation.x = -1.7; } });
     if (id === 'village' && rescuedCount() === 5) startCelebration(w);
     const sp = opts.pos || w.spawn; P.pos.set(sp.x, sp.y + (opts.pos ? 0.5 : 0), sp.z); P.vel.set(0, 0, 0); P.respawn.copy(w.spawn); P.respawn.y += 0.2;
-    P.inv = 0; P.fly = false; P.rolling = 0; P.standing = null; P.coyote = 0;
+    P.inv = 0; P.fly = false; P.rolling = 0; P.standing = null; P.coyote = 0; P.energy = MAX_ENERGY; P.hitCd = 0; P.netCd = 0; P.punch = 0; Nets.clear();
     P.yaw = id === 'village' ? Math.PI : Math.PI; cam.yaw = 0; cam.pitch = 0.42; snapCamera();
     Sfx.setTheme(w.theme === 'village' || id === 'village' ? 'village' : id);
     G.ui && G.ui.worldChanged(id);
@@ -157,7 +161,8 @@ function spawnBoss(w) {
   w.boss = null; const d = w.bossDef; if (!d || save.bossDown[w.id]) return;
   const hp = DIFFICULTY[save.difficulty].bossHp, m = makeCreature(d.kind); m.position.set(d.x, d.y, d.z); w.group.add(m);
   const stars = new T.Group(); for (let i = 0; i < 4; i++) stars.add(mesh(geo('oct', 0.14), M(0xffe24a, { emissive: 0xffc800 }), Math.cos(i * 1.57) * 0.9, 0, Math.sin(i * 1.57) * 0.9)); stars.position.y = 2.1; stars.visible = false; m.userData.inner.add(stars);
-  w.boss = { d, mesh: m, stars, x: d.x, y: d.y, z: d.z, hp, maxHp: hp, state: 'idle', t: 0, cd: 1.5, dx: 0, dz: 1, yaw: 0, alive: true, dead: 0, size: m.userData.size, lastBounce: 0 };
+  const net = new T.Mesh(geo('ico', 1.05, 1), new T.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.9, fog: false })); net.position.y = 0.75; net.scale.set(1.15, 1, 1.15); net.visible = false; m.userData.inner.add(net);
+  w.boss = { d, mesh: m, stars, net, netted: false, x: d.x, y: d.y, z: d.z, hp, maxHp: hp, state: 'idle', t: 0, cd: 1.5, dx: 0, dz: 1, yaw: 0, alive: true, dead: 0, size: m.userData.size, lastBounce: 0 };
 }
 function updateBoss(dt) {
   const w = W(), b = w.boss; if (!b) return;
@@ -184,8 +189,8 @@ function updateBoss(dt) {
       else if (b.t > 2.4) { b.state = 'tired'; b.t = 0; }
       break; }
     case 'tired': if (b.t > 1.0) { b.state = 'idle'; b.cd = 1.4; } break;
-    case 'dizzy': b.stars.visible = true; b.stars.rotation.y += dt * 5; m.userData.inner.rotation.z = Math.sin(b.t * 6) * 0.1; if (b.t > (save.difficulty === 'easy' ? 6 : 5)) { b.state = 'idle'; b.cd = 1.2; b.stars.visible = false; m.userData.inner.rotation.z = 0; } break;
-    case 'hurt': b.stars.visible = false; m.userData.inner.rotation.z = 0; m.visible = Math.floor(b.t * 18) % 2 === 0 || b.t > 1.0; if (b.t > 1.4) { b.state = 'idle'; b.cd = 1.0; m.visible = true; } break;
+    case 'dizzy': b.stars.visible = true; b.stars.rotation.y += dt * 5; b.net.visible = b.netted; b.net.rotation.y += dt * 1.5; m.userData.inner.rotation.z = Math.sin(b.t * 6) * 0.1; if (b.t > (b.netted ? 7 : save.difficulty === 'easy' ? 6 : 5)) { b.state = 'idle'; b.cd = 1.2; b.stars.visible = false; b.netted = false; b.net.visible = false; m.userData.inner.rotation.z = 0; } break;
+    case 'hurt': b.stars.visible = false; b.net.visible = false; b.netted = false; m.userData.inner.rotation.z = 0; m.visible = Math.floor(b.t * 18) % 2 === 0 || b.t > 1.0; if (b.t > 1.4) { b.state = 'idle'; b.cd = 1.0; m.visible = true; } break;
     case 'dead': b.dead += dt; m.rotation.y += dt * 12; m.position.y += dt * 6; m.scale.multiplyScalar(1 - dt * 0.7); if (b.dead > 1.8) { w.group.remove(m); w.boss = null; } return;
   }
   b.y = w.groundAt ? w.groundAt(b.x, b.z) : b.y;
@@ -204,9 +209,90 @@ function hitBoss(b, dx = 0, dz = 1) {
   b.hp--; b.state = 'hurt'; b.t = 0; Sfx.play('stomp'); FX.burst(b.x, b.y + b.size * 0.9, b.z, [0xffe24a, 0xff6f61], 20, 8, 0.4, 0.8); G.shake = 0.6;
   if (b.hp <= 0) {
     b.alive = false; b.state = 'dead'; save.bossDown[W().id] = true; G.bossFight = false; $('bossBar').classList.add('hidden');
-    FX.confetti(b.x, b.y + 2, b.z, 80); Sfx.play('rescue'); addCoins(40); G.ui.toast(`🎉 ${b.d.name} kaçtı! +40 🪙`, 'gold'); queueSave();
+    b.netted = false; b.net.visible = false;
+    celebrate(P.pos.x, P.pos.y + 1, P.pos.z, true, 'Yuppiii! 🏆'); FX.confetti(b.x, b.y + 2, b.z, 80); Sfx.play('rescue'); addCoins(40); G.ui.toast(`🎉 ${b.d.name} kaçtı! +40 🪙`, 'gold'); queueSave();
     G.ui.toast('🔓 Kafesin kilidi açıldı!');
   }
+}
+
+/* ---------- Kutlama: konfeti + "Yuppi!" sesi + uçuşan yazı ---------- */
+function celebrate(x, y, z, big, text) {
+  FX.confetti(x, y + 1, z, big ? 90 : 36); Sfx.play(big ? 'yayBig' : 'yay');
+  Labels.temp(text || pick(['Yuppi! 🎉', 'Yaşasın! 🥳', 'Harika! ⭐', 'Hoplaaa! 🎊', 'Süper! 🌟']), 'cheer', (v) => v.set(x, y + 2.4, z), 2.2);
+  if (big) { G.shake = Math.max(G.shake || 0, 0.25); for (let i = 0; i < 6; i++) setTimeout(() => FX.confetti(x + rand(-3, 3), y + rand(1, 4), z + rand(-3, 3), 26), 150 + i * 170); }
+}
+G.celebrate = celebrate;
+
+/* ---------- Vurma ve ağ atma ---------- */
+function hitBlob(b) {
+  b.alive = false; b.respawn = 25; b.mesh.visible = false; b.frozen = 0; if (b.netMesh) b.netMesh.visible = false;
+  Sfx.play('stomp'); addStat('stomps'); addCoins(2); FX.burst(b.x, b.oy + 0.5, b.z, [0xb86bff, 0xffffff, 0xffe27a], 10, 4, 0.3, 0.6);
+}
+let bossHint = 0;
+function doHit() {
+  if (!G.world || G.paused || G.mode !== 'play' || P.hitCd > 0) return;
+  P.hitCd = 0.4; P.punch = 0.28; Sfx.play('whoosh');
+  const w = W(), fx = Math.sin(P.yaw), fz = Math.cos(P.yaw), reach = 2.2 * charSize() + 0.5; let any = false;
+  for (const b of w.blobs) {
+    if (!b.alive) continue; const dx = b.x - P.pos.x, dz = b.z - P.pos.z, d = Math.hypot(dx, dz);
+    if (d < reach + 0.4 && (d < 0.8 || (dx * fx + dz * fz) / d > 0.15) && Math.abs(b.oy - P.pos.y) < 2.2) { hitBlob(b); any = true; }
+  }
+  const b = w.boss;
+  if (b && b.alive && b.state !== 'dead') {
+    const dx = P.pos.x - b.x, dz = P.pos.z - b.z, d = Math.hypot(dx, dz);
+    if (d < b.size * 0.5 + reach + 0.3 && P.pos.y < b.y + b.size * 1.1) {
+      any = true;
+      if (b.state === 'dizzy') hitBoss(b, dx, dz);
+      else { Sfx.play('hit'); FX.burst(P.pos.x + fx * 1.2, P.pos.y + 1, P.pos.z + fz * 1.2, [0xffffff, 0xffe24a], 8, 4, 0.25, 0.4); if (G.time - bossHint > 6) { bossHint = G.time; G.ui.toast('💪 Çok sağlam! Önce sersemlet: duvara çarptır ya da 🕸️ ağ at, sonra vur!'); } }
+    }
+  }
+  if (any) G.shake = Math.max(G.shake || 0, 0.18);
+}
+const Nets = {
+  list: [], mat: null,
+  clear() { this.list.forEach((n) => scene.remove(n.m)); this.list.length = 0; },
+  target() {
+    const w = W(), fx = Math.sin(P.yaw), fz = Math.cos(P.yaw); let best = null, bs = 0.6;
+    const cand = (o, x, y, z, r) => { const dx = x - P.pos.x, dz = z - P.pos.z, d = Math.hypot(dx, dz); if (d > 20 || d < 0.1) return; const ang = Math.abs(angDiff(Math.atan2(fx, fz), Math.atan2(dx, dz))); if (ang < bs) { bs = ang; best = { o, x, y, z, r }; } };
+    for (const b of w.blobs) if (b.alive && !(b.frozen > 0)) cand(b, b.x, b.oy + 0.5, b.z, 0.9);
+    const bo = w.boss; if (bo && bo.alive && bo.state !== 'dead' && !bo.netted) cand(bo, bo.x, bo.y + bo.size * 0.5, bo.z, bo.size * 0.5);
+    return best;
+  },
+  throw() {
+    if (!G.world || G.paused || G.mode !== 'play') return;
+    if (P.netCd > 0) { G.ui.toast(`🕸️ Ağ hazırlanıyor… ${Math.ceil(P.netCd)} sn`); return; }
+    P.netCd = 5; P.punch = 0.3; Sfx.play('net');
+    this.mat = this.mat || new T.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.95, fog: false });
+    const m = new T.Mesh(geo('ico', 0.55, 1), this.mat); const s = charSize(), fx = Math.sin(P.yaw), fz = Math.cos(P.yaw);
+    m.position.set(P.pos.x + fx * 0.8, P.pos.y + 1.1 * s, P.pos.z + fz * 0.8); scene.add(m);
+    const tg = this.target(); let vx = fx * 20, vy = 3.5, vz = fz * 20;
+    if (tg) { const dx = tg.x - m.position.x, dy = tg.y - m.position.y, dz = tg.z - m.position.z, l = Math.hypot(dx, dy, dz) || 1; vx = (dx / l) * 22; vy = (dy / l) * 22; vz = (dz / l) * 22; }
+    this.list.push({ m, vx, vy, vz, age: 0, tg });
+  },
+  update(dt) {
+    const w = W();
+    for (let i = this.list.length - 1; i >= 0; i--) {
+      const n = this.list[i], p = n.m.position; n.age += dt;
+      if (n.tg) { const o = n.tg.o, ty = o.size ? o.y + o.size * 0.5 : o.oy + 0.5, dx = o.x - p.x, dy = ty - p.y, dz = o.z - p.z, l = Math.hypot(dx, dy, dz) || 1; n.vx = lerp(n.vx, (dx / l) * 22, Math.min(1, dt * 6)); n.vy = lerp(n.vy, (dy / l) * 22, Math.min(1, dt * 6)); n.vz = lerp(n.vz, (dz / l) * 22, Math.min(1, dt * 6)); }
+      else n.vy -= 7 * dt;
+      p.x += n.vx * dt; p.y += n.vy * dt; p.z += n.vz * dt; n.m.rotation.x += dt * 8; n.m.rotation.y += dt * 6; n.m.scale.setScalar(1 + Math.min(n.age, 0.6) * 2.4);
+      let done = n.age > 1.5 || (w.groundAt && p.y < w.groundAt(p.x, p.z) + 0.1);
+      const bo = w.boss;
+      if (!done && bo && bo.alive && bo.state !== 'dead' && Math.hypot(p.x - bo.x, p.z - bo.z) < bo.size * 0.5 + 0.8 && p.y > bo.y - 0.5 && p.y < bo.y + bo.size * 1.2) { netBoss(bo); done = true; }
+      if (!done) for (const b of w.blobs) if (b.alive && !(b.frozen > 0) && Math.hypot(p.x - b.x, p.z - b.z) < 1.5 && Math.abs(p.y - (b.oy + 0.5)) < 1.5) { freezeBlob(b); done = true; break; }
+      if (done) { FX.burst(p.x, p.y, p.z, 0xffffff, 6, 3, 0.2, 0.5, 2, 1); scene.remove(n.m); this.list.splice(i, 1); }
+    }
+  },
+};
+function netBoss(b) {
+  b.state = 'dizzy'; b.t = 0; b.netted = true; b.stars.visible = true; b.net.visible = true; Sfx.play('caught'); G.shake = 0.3;
+  FX.burst(b.x, b.y + b.size * 0.8, b.z, [0xffffff, 0xcfeaff], 22, 7, 0.35, 0.9);
+  G.ui.toast(`🕸️ ${b.d.name} ağa yakalandı! Şimdi yanına git ve 👊 vur!`, 'gold');
+}
+function freezeBlob(b) {
+  b.frozen = 6; Sfx.play('caught');
+  if (!b.netMesh) { b.netMesh = new T.Mesh(geo('ico', 0.85, 1), Nets.mat); b.netMesh.position.y = 0.5; b.mesh.add(b.netMesh); }
+  b.netMesh.visible = true; FX.burst(b.x, b.oy + 0.6, b.z, [0xffffff, 0xcfeaff], 10, 3, 0.2, 0.6);
 }
 
 /* ---------- Arkadaş kurtarma ---------- */
@@ -217,7 +303,7 @@ function freeCageVisual(c, silent) {
 function rescueFriend(fid, fromNet) {
   if (save.rescued[fid]) return; const f = FRIENDS[fid];
   save.rescued[fid] = true; queueSave();
-  const w = W(); const cage = w && w.cages.find((c) => c.fid === fid); if (cage) { freeCageVisual(cage); FX.confetti(cage.x, cage.y + 1.5, cage.z); }
+  const w = W(); const cage = w && w.cages.find((c) => c.fid === fid); if (cage) { freeCageVisual(cage); FX.confetti(cage.x, cage.y + 1.5, cage.z); celebrate(cage.x, cage.y + 1, cage.z, true, `${f.emoji} Yuppiii! Kurtuldu!`); }
   Sfx.play('rescue'); G.ui.toast(`${f.emoji} ${f.name} kurtarıldı!`, 'gold'); G.ui.friendsChanged();
   addCoins(60); let giftName = '';
   if (f.gift) { save.owned[f.gift.cat + ':' + f.gift.id] = true; giftName = SHOP[f.gift.cat].items.find((i) => i.id === f.gift.id).name + ' + '; }
@@ -249,7 +335,7 @@ const hutNear = (w, p, r) => { for (const h of w.huts || []) if (Math.hypot(p.x 
 function rectDist(s, p) { return Math.hypot(Math.max(s.minx - p.x, 0, p.x - s.maxx), Math.max(s.minz - p.z, 0, p.z - s.maxz)); }
 function insideHutWall(h) { return h.walls.some((s) => P.pos.x + HW > s.minx && P.pos.x - HW < s.maxx && P.pos.z + HW > s.minz && P.pos.z - HW < s.maxz && P.pos.y + PH > s.miny && P.pos.y < s.maxy); }
 function discoverBug(id) {
-  if (save.bugs[id]) return; save.bugs[id] = true; addCoins(15); queueSave(); Sfx.play('quest'); G.shake = 0.3; FX.confetti(P.pos.x, P.pos.y + 1.5, P.pos.z, 30);
+  if (save.bugs[id]) return; save.bugs[id] = true; addCoins(15); queueSave(); Sfx.play('quest'); G.shake = 0.3; celebrate(P.pos.x, P.pos.y + 0.5, P.pos.z, false, 'Gizli hile! 🐞');
   G.ui.toast(`🐞 Gizli hile bulundu: ${BUGS[id].name}! +15 🪙`, 'gold');
   if (Object.keys(save.bugs).length === Object.keys(BUGS).length) { addCoins(100); G.ui.toast('🏆 Tüm gizli hileleri buldun! +100 🪙', 'gold'); }
 }
@@ -295,7 +381,7 @@ function toggleFly() {
   P.fly = true; P.vel.y = 4; P.onGround = false; Sfx.play('fly'); addStat('abil');
 }
 function toggleSprint(on) { if (!hasAbility('sprint')) return; if (on !== undefined) P.sprintOn = on; else P.sprintOn = !P.sprintOn; if (P.sprintOn) { Sfx.play('dash'); addStat('abil'); } }
-G.act = { jump: doJump, roll: doRoll, invis: doInvis, fly: toggleFly, sprint: toggleSprint };
+G.act = { jump: doJump, roll: doRoll, invis: doInvis, fly: toggleFly, sprint: toggleSprint, hit: () => doHit(), net: () => Nets.throw() };
 
 function moveDir() {
   let ix = (Input.keys.has('KeyD') ? 1 : 0) - (Input.keys.has('KeyA') ? 1 : 0) + Input.tx;
@@ -344,7 +430,7 @@ function updatePlayer(dt) {
   const w = W(), p = P.pos, v = P.vel;
   P.jumpBuf = Math.max(0, P.jumpBuf - dt); P.rollCd = Math.max(0, P.rollCd - dt); P.inv = Math.max(0, P.inv - dt); P.invisCd = Math.max(0, P.invisCd - dt);
   if (P.invis > 0) { P.invis -= dt; if (P.invis <= 0 && insideBarrier()) P.invis = 0.1; }
-  P.barrierPass = Math.max(0, P.barrierPass - dt);
+  P.barrierPass = Math.max(0, P.barrierPass - dt); P.hitCd = Math.max(0, P.hitCd - dt); P.netCd = Math.max(0, P.netCd - dt); P.punch = Math.max(0, P.punch - dt);
   if (P.clipHut) { P.clip = Math.max(0, P.clip - dt); if (P.clip <= 0) { const h = P.clipHut; P.clipHut = null; if (insideHutWall(h)) { p.x = h.cx; p.z = h.cz; p.y = h.fh + 0.2; v.set(0, 0, 0); } } }
   if (!Input.keys.has('ShiftLeft') && !Input.keys.has('ShiftRight') && !isTouch && P.sprintKey) { P.sprintKey = false; P.sprintOn = false; }
   // hareketli platform
@@ -352,6 +438,8 @@ function updatePlayer(dt) {
   const d = moveDir(), hasIn = d.lengthSq() > 0.01;
   const veh = P.vehicle ? VEH[P.vehicle] : null;
   let speed = 7.2; if (P.sprintOn && hasAbility('sprint')) speed = 11.5; if (P.fly) speed = 9.5; if (veh && !P.fly) speed = veh.speed * (P.sprintOn ? 1.18 : 1);
+  const inMud = P.onGround && !P.standing && w.mudZones.some((m) => Math.hypot(p.x - m.x, p.z - m.z) < m.r);
+  if (inMud) { speed *= 0.5; if (Math.hypot(v.x, v.z) > 1 && Math.random() < 0.2) FX.spawn(p.x + rand(-0.3, 0.3), p.y + 0.15, p.z + rand(-0.3, 0.3), rand(-1, 1), rand(1, 3), rand(-1, 1), 0x6b4a2e, 0.22, 0.5, 8); if (G.time - (G.mudMsg || -99) > 8) { G.mudMsg = G.time; G.ui.toast('🟤 Çamur çukuru! Burada yavaşlarsın.'); } }
   const ice = P.onGround && ((P.standing && P.standing.type === 'ice') || (!P.standing && P.groundIce));
   const acc = (P.onGround ? (ice ? 3.2 : 48) : 24) * dt * (veh ? veh.acc : 1);
   if (P.rolling > 0) {
@@ -425,15 +513,15 @@ function updateWorld(dt) {
   // düşmanlar
   for (const b of w.blobs) {
     if (!b.alive) { b.respawn -= dt; b.mesh.scale.y = Math.max(0.15, b.mesh.scale.y); if (b.respawn <= 0) { b.alive = true; b.mesh.visible = true; b.mesh.scale.set(1, 1, 1); } continue; }
-    b.t += dt * b.speed * 0.6; const o = Math.sin(b.t) * b.range, nx = b.ox + (b.axis === 'x' ? o : 0), nz = b.oz + (b.axis === 'z' ? o : 0);
+    if (b.frozen > 0) { b.frozen -= dt; if (b.frozen <= 0 && b.netMesh) b.netMesh.visible = false; } else b.t += dt * b.speed * 0.6;
+    const o = Math.sin(b.t) * b.range, nx = b.ox + (b.axis === 'x' ? o : 0), nz = b.oz + (b.axis === 'z' ? o : 0);
     b.mesh.rotation.y = Math.atan2(nx - b.x, nz - b.z) || b.mesh.rotation.y; b.x = nx; b.z = nz;
     if (w.groundAt) b.oy = w.groundAt(nx, nz); const hop = Math.abs(Math.sin(t * 4 + b.ox)) * 0.25; b.mesh.position.set(nx, b.oy + hop, nz); b.mesh.userData.body.scale.y = 0.9 + Math.sin(t * 8 + b.ox) * 0.05;
     const dx = p.x - nx, dz = p.z - nz;
     if (dx * dx + dz * dz < 0.95 && p.y < b.oy + 1.05 && p.y + PH > b.oy) {
       if (P.rolling > 0 || (P.vel.y < 0 && p.y > b.oy + 0.55)) {
-        b.alive = false; b.respawn = 25; b.mesh.visible = false; if (P.rolling <= 0) { P.vel.y = P.jumpHeld ? 14 : 10.5; P.jumps = 1; }
-        Sfx.play('stomp'); addStat('stomps'); addCoins(2); FX.burst(nx, b.oy + 0.5, nz, [0xb86bff, 0xffffff, 0xffe27a], 10, 4, 0.3, 0.6);
-      } else if (P.invis <= 0) hurtPlayer(dx, dz);
+        const r = P.rolling > 0; hitBlob(b); if (!r) { P.vel.y = P.jumpHeld ? 14 : 10.5; P.jumps = 1; }
+      } else if (P.invis <= 0 && !(b.frozen > 0)) hurtPlayer(dx, dz);
     }
   }
   updateBoss(dt);
@@ -451,7 +539,7 @@ function updateWorld(dt) {
       c.t = 4;
       if (save.chests[c.key] !== today) {
         save.chests[c.key] = today; c.open = true; const r = Math.round(rand(20, 40)); addCoins(r); addStat('chests'); Sfx.play('chest');
-        FX.burst(c.x, c.y + 1, c.z, [0xffe27a, 0xffc929, 0xffffff], 18, 5, 0.3, 0.9, 8, 4); G.ui.toast(`🧰 Sandık açıldı! +${r} 🪙`, 'gold');
+        FX.burst(c.x, c.y + 1, c.z, [0xffe27a, 0xffc929, 0xffffff], 18, 5, 0.3, 0.9, 8, 4); celebrate(c.x, c.y + 0.5, c.z, false, 'Hazine! 💰'); G.ui.toast(`🧰 Sandık açıldı! +${r} 🪙`, 'gold');
       } else G.ui.toast('🧰 Bu sandık bugün boş. Yarın tekrar dolar!');
     }
   }
@@ -478,6 +566,38 @@ function updateWorld(dt) {
       if (locked) { if (!po.warn || t - po.warn > 3) { po.warn = t; G.ui.toast(`🔒 ${WORLD_META[po.lockedBy].name} bitince açılır!`); } }
       else { G.traveling = true; Sfx.play('portal'); loadWorld(po.dest); setTimeout(() => { G.traveling = false; }, 900); }
     }
+  }
+  // enerji balonları
+  for (const b of w.balloons) {
+    if (b.taken) { b.t -= dt; if (b.t <= 0) { b.taken = false; b.mesh.visible = true; } continue; }
+    b.mesh.position.y = b.y + Math.sin(t * 1.6 + b.ph) * 0.35; b.mesh.rotation.y += dt * 0.6; b.mesh.rotation.z = Math.sin(t * 1.1 + b.ph) * 0.08;
+    const bx = p.x - b.x, bz = p.z - b.z, by = p.y + PH * 0.5 - b.mesh.position.y;
+    if (bx * bx + bz * bz + by * by < 2.4 * Math.max(1, charSize() * charSize())) {
+      b.taken = true; b.t = 25; b.mesh.visible = false; const was = P.energy; P.energy = Math.min(MAX_ENERGY, P.energy + 2.5);
+      Sfx.play('pop'); FX.burst(b.x, b.mesh.position.y, b.z, b.color, 16, 5, 0.3, 0.8, 6, 2); FX.burst(b.x, b.mesh.position.y, b.z, 0xffffff, 6, 3, 0.2, 0.5, 2, 1);
+      G.ui.toast(P.energy >= MAX_ENERGY && was >= MAX_ENERGY - 0.05 ? '🎈 Pat! Enerjin zaten dolu.' : '🎈 Enerji balonu! Uçuş enerjin doldu.', 'gold'); addStat('abil');
+    }
+  }
+  // dikenli tuzaklar
+  for (const tr of w.traps) {
+    const c = (t + tr.ph) % 3.2, st = c < 1.7 ? 'down' : c < 2.3 ? 'warn' : 'up';
+    tr.up = approach(tr.up, st === 'up' ? 1 : st === 'warn' ? 0.22 : 0, dt * (st === 'up' ? 14 : 4)); tr.spikes.scale.y = 0.06 + tr.up * 0.94; tr.spikes.position.y = -0.4 + tr.up * 0.4;
+    tr.ring.material.opacity = st === 'warn' ? 0.45 + 0.45 * Math.sin(t * 28) : 0; tr.spikes.rotation.y = st === 'warn' ? Math.sin(t * 60) * 0.06 : 0;
+    if (st === 'up' && tr.up > 0.6 && Math.hypot(p.x - tr.x, p.z - tr.z) < tr.r + HW && p.y < tr.y + 1.0 && P.inv <= 0 && P.invis <= 0) {
+      const dx = p.x - tr.x, dz = p.z - tr.z, l = Math.hypot(dx, dz) || 1; P.inv = 1.3; P.vel.x = (dx / l) * 9; P.vel.z = (dz / l) * 9; P.vel.y = 9; P.rolling = 0; P.fly = false;
+      Sfx.play('trap'); G.shake = 0.35; FX.burst(p.x, p.y + 0.5, p.z, [0xff6f61, 0xffd23f, 0xffffff], 12, 5, 0.25, 0.6); if (t - (G.trapMsg || 0) > 5) { G.trapMsg = t; G.ui.toast('🌵 Ay! Dikenli tuzak! Dikenler çıkmadan önce kırmızı yanar, dikkat et.'); }
+    }
+  }
+  // ışık sütunları ve perde kıvrımları
+  for (const bc of w.beacons) { bc.b.material.opacity = 0.27 + Math.sin(t * 2 + bc.x) * 0.07; bc.ring.scale.setScalar(1 + Math.sin(t * 3 + bc.z) * 0.08); bc.ring.rotation.z += dt; bc.star.rotation.y += dt * 2; bc.star.position.y = bc.top + Math.sin(t * 2) * 0.6; }
+  for (const s of w.barriers) if (s.extra.visible) s.extra.children.forEach((c) => { if (c.userData.fold !== undefined) c.position.z = (c.userData.fold % 2 ? 0.22 : -0.22) + Math.sin(t * 2 + c.userData.fold * 0.9) * 0.1; });
+  if (w.barriers.length && Math.random() < 0.35) { const s = pick(w.barriers); if (s.active && Math.hypot(p.x - (s.minx + s.maxx) / 2, p.z - (s.minz + s.maxz) / 2) < 40) FX.spawn(rand(s.minx, s.maxx), s.miny + rand(0.5, s.maxy - s.miny), (s.minz + s.maxz) / 2 + rand(-0.4, 0.4), 0, 1.2, 0, pick([0xe9dcff, 0xb28bff, 0xffffff]), 0.16, 1.4, 0); }
+  // evler: içeri girince çatı kalkar, duvarlar saydamlaşır
+  for (const h of w.houses) {
+    const dx = p.x - h.o.x, dz = p.z - h.o.z, c = Math.cos(h.o.r), s = Math.sin(h.o.r), lx = dx * c - dz * s, lz = dx * s + dz * c;
+    const inside = Math.abs(lx) < h.hx + 0.5 && Math.abs(lz) < h.hz + 0.5 && p.y < 4.2;
+    h.op = lerp(h.op, inside ? 0.16 : 1, Math.min(1, dt * 7)); h.mat.transparent = true; h.mat.opacity = h.op; h.mat.depthWrite = h.op > 0.6; h.roof.visible = !inside;
+    if (inside && !h.entered) { h.entered = true; G.ui.toast('🏠 Eve girdin! Yatağa, masaya ve rafa bak.'); } else if (!inside) h.entered = false;
   }
   // tabelalar & etkileşim
   let hint = null; for (const s of w.signs) if (Math.hypot(p.x - s.x, p.z - s.z) < 4.2 && Math.abs(p.y - s.y) < 3) { hint = s.text; break; }
@@ -508,6 +628,7 @@ function updatePlayerVisual(dt) {
   }
   u.legL.rotation.x = lA; u.legR.rotation.x = -lA; u.armL.rotation.x = aA; u.armR.rotation.x = -aA;
   u.armL.rotation.z = lerp(u.armL.rotation.z, -spread - 0.1, Math.min(1, dt * 14)); u.armR.rotation.z = lerp(u.armR.rotation.z, spread + 0.1, Math.min(1, dt * 14));
+  if (P.punch > 0) { const k = Math.sin((1 - P.punch / 0.3) * Math.PI); u.armR.rotation.x = -2.4 * k; u.armR.rotation.z = 0.1; u.armL.rotation.x = 0.5 * k; }
   u.body.position.y = by; const sq = P.squash; u.body.scale.set(1 + sq * 0.18, 1 - sq * 0.22, 1 + sq * 0.18);
   u.head.rotation.z = Math.sin(P.phase * 0.5) * 0.05 * run; if (u.flame) { u.flame.visible = P.fly; u.flame.scale.setScalar(0.8 + Math.sin(t * 40) * 0.2); }
   if (P.vehicle) applyRiderPose(m, P.vehicle, sp, dt, t); else if (u.body.position.z !== 0) u.body.position.z = 0;
@@ -517,7 +638,7 @@ function updatePlayerVisual(dt) {
 }
 
 /* ---------- Kamera ---------- */
-function snapCamera() { cam.target.set(P.pos.x, P.pos.y + 1.4, P.pos.z); placeCamera(1); }
+function snapCamera() { cam.target.set(P.pos.x, P.pos.y + 1.4 * charSize(), P.pos.z); placeCamera(1); }
 function placeCamera(k) {
   const cp = Math.cos(cam.pitch), want = new T.Vector3(cam.target.x + Math.sin(cam.yaw) * cp * cam.dist, cam.target.y + Math.sin(cam.pitch) * cam.dist, cam.target.z + Math.cos(cam.yaw) * cp * cam.dist);
   if (G.world && G.world.groundAt) want.y = Math.max(want.y, G.world.groundAt(want.x, want.z) + 1.2);
@@ -536,7 +657,7 @@ function updateCamera(dt) {
   if (Input.keys.has('ArrowLeft')) cam.yaw += dt * 2.2; if (Input.keys.has('ArrowRight')) cam.yaw -= dt * 2.2;
   if (Input.keys.has('ArrowUp')) cam.pitch = clamp(cam.pitch - dt * 1.2, 0.05, 1.25); if (Input.keys.has('ArrowDown')) cam.pitch = clamp(cam.pitch + dt * 1.2, 0.05, 1.25);
   cam.dist = clamp(cam.dist, 5, 18); if (G.bossFight && cam.dist < 14) cam.dist += dt * 5;
-  const k = Math.min(1, dt * 9); cam.target.x = lerp(cam.target.x, P.pos.x, k); cam.target.z = lerp(cam.target.z, P.pos.z, k); cam.target.y = lerp(cam.target.y, P.pos.y + 1.4, Math.min(1, dt * 5));
+  const k = Math.min(1, dt * 9); cam.target.x = lerp(cam.target.x, P.pos.x, k); cam.target.z = lerp(cam.target.z, P.pos.z, k); cam.target.y = lerp(cam.target.y, P.pos.y + 1.4 * charSize(), Math.min(1, dt * 5));
   placeCamera(Math.min(1, dt * 14));
 }
 
@@ -547,6 +668,7 @@ addEventListener('keydown', (e) => {
   if (e.repeat) return; Input.keys.add(e.code); Sfx.init();
   if (G.mode !== 'play') return;
   if (e.code === 'Space') doJump(); else if (e.code === 'KeyC' && !P.fly) doRoll(); else if (e.code === 'KeyV') doInvis(); else if (e.code === 'KeyF') toggleFly();
+  else if (e.code === 'KeyX' || e.code === 'KeyJ') doHit(); else if (e.code === 'KeyN' || e.code === 'KeyQ') Nets.throw();
   else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') { P.sprintKey = true; toggleSprint(true); }
   else if (/^Digit[0-5]$/.test(e.code)) selectVehicle(e.code === 'Digit0' ? null : VEH_ORDER[+e.code.slice(5) - 1]); else if (e.code === 'KeyB') G.ui.openBag(); else if (e.code === 'KeyE' && G.interact) G.interact.fn(); else if (e.code === 'Escape') G.ui.openMenu(); else if (e.code === 'KeyM') G.ui.toggleMute();
 });
@@ -569,6 +691,7 @@ canvas.addEventListener('wheel', (e) => { cam.dist = clamp(cam.dist + e.deltaY *
   const hold = (el, down, up) => { el.addEventListener('pointerdown', (e) => { e.preventDefault(); Sfx.init(); down(); }); ['pointerup', 'pointercancel', 'pointerleave'].forEach((n) => el.addEventListener(n, () => up && up())); };
   hold($('tJump'), () => { doJump(); Input.jumpTouch = true; }, () => { P.jumpHeld = false; Input.jumpTouch = false; });
   hold($('tRoll'), () => doRoll(), null); hold($('tInvis'), () => doInvis(), null); hold($('tFly'), () => toggleFly(), null);
+  hold($('tHit'), () => doHit(), null); hold($('tNet'), () => Nets.throw(), null);
   hold($('tSprint'), () => { toggleSprint(); $('tSprint').classList.toggle('on', P.sprintOn); }, null);
 })();
 function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = w / h < 0.8 ? 72 : 60; camera.updateProjectionMatrix(); }
@@ -587,13 +710,15 @@ function frame(now) {
     updatePlayerVisual(dt); updateCamera(dt);
     sky.position.copy(camera.position); water.position.x = camera.position.x; water.position.z = camera.position.z;
     waterNormal.offset.x += dt * 0.012; waterNormal.offset.y += dt * 0.007; sunSprite.position.copy(camera.position).addScaledVector(sunDir, 360);
-    sun.position.copy(P.pos).addScaledVector(sunDir, 52); sun.target.position.copy(P.pos); sun.castShadow = save.settings.shadows && save.settings.quality !== 'low'; stars.position.copy(camera.position);
+    /* gölge kamerası ızgaraya oturtulur: gölge kenarları yürürken titremez/oynamaz */
+    sun.target.position.set(Math.round(P.pos.x * 2) / 2, Math.round(P.pos.y * 2) / 2, Math.round(P.pos.z * 2) / 2); sun.position.copy(sun.target.position).addScaledVector(sunDir, 52); sun.castShadow = save.settings.shadows && save.settings.quality !== 'low'; stars.position.copy(camera.position);
+    if (G.mode === 'play' && !G.paused) Nets.update(dt);
     FX.update(dt); Labels.update(dt); G.ui && G.ui.frame(dt); Net.update && Net.update(dt);
     renderer.render(scene, camera);
   }
 }
 G.start = () => {
-  loadSave(); G.applyQuality(); P.mesh = makePanda(save.equip); scene.add(P.mesh); G.setSettings = () => { Sfx.applySettings(); };
+  loadSave(); G.applyQuality(); P.mesh = makePanda(save.equip); scene.add(P.mesh); applySize(); G.setSettings = () => { Sfx.applySettings(); };
   requestAnimationFrame(frame);
 };
 G.applyQuality = () => { renderer.setPixelRatio(pixelRatio()); resize(); };

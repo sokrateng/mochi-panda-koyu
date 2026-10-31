@@ -5,6 +5,35 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#7fd3ff">
 <title>Mochi'nin Panda Köyü</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mochi">
+<meta name="description" content="Mochi panda ile arkadaşlarını kurtar! 3B macera oyunu.">
+<script>
+/* Açılış hatası olursa boş ekran yerine anlaşılır bir mesaj göster */
+(function () {
+  var shown = false;
+  function boot(msg) {
+    if (shown) return; shown = true;
+    var d = document.createElement('div');
+    d.id = 'bootError';
+    d.innerHTML = '<div><h2>🐼 Oyun açılamadı</h2><p>Sorun şu olabilir: tarayıcın 3B desteklemiyor ya da cihazın belleği doldu.</p><p><button id="bootLow">🔋 Düşük kaliteyle yeniden dene</button></p><small></small></div>';
+    document.body.appendChild(d);
+    d.querySelector('small').textContent = String(msg || '').slice(0, 220);
+    d.querySelector('#bootLow').onclick = function () {
+      try { var k = 'mochi_panda_koyu_kayit_v1', s = JSON.parse(localStorage.getItem(k) || '{}'); s.settings = Object.assign({}, s.settings, { quality: 'low', shadows: false }); localStorage.setItem(k, JSON.stringify(s)); } catch (e) {}
+      location.reload();
+    };
+  }
+  window.__bootError = boot;
+  addEventListener('error', function (e) { if (!window.G || !window.G.ready) boot(e.message + (e.filename ? ' @' + e.filename.split('/').pop() + ':' + e.lineno : '')); });
+  addEventListener('unhandledrejection', function (e) { if (!window.G || !window.G.ready) boot(e.reason && e.reason.message); });
+  setTimeout(function () { if (!window.G || !window.G.ready) boot('Yükleme çok uzun sürdü'); }, 25000);
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
@@ -13,6 +42,8 @@
 <body>
 <canvas id="game"></canvas>
 <div id="labels"></div>
+<div id="vignette"></div>
+<div id="energyBar" class="hidden"><span>🪽</span><div><i></i></div></div>
 
 <!-- HUD -->
 <div id="hud" class="hidden">
@@ -44,11 +75,13 @@
 <div id="touch" class="hidden">
   <div id="stickZone"><div id="stickBase"><div id="stickKnob"></div></div></div>
   <div id="actions">
-    <button class="act big" id="tJump">⬆</button>
-    <button class="act hidden" id="tRoll">🌀</button>
-    <button class="act hidden" id="tSprint">⚡</button>
-    <button class="act hidden" id="tInvis">👻</button>
-    <button class="act hidden" id="tFly">🪽</button>
+    <button class="act big" id="tJump">⬆<small>ZIPLA</small></button>
+    <button class="act hit" id="tHit">👊<small>VUR</small></button>
+    <button class="act net" id="tNet">🕸️<small>AĞ</small></button>
+    <button class="act hidden" id="tSprint">⚡<small>KOŞ</small></button>
+    <button class="act hidden" id="tRoll">🌀<small>YUVARLAN</small></button>
+    <button class="act hidden" id="tInvis">👻<small>GİZLEN</small></button>
+    <button class="act hidden" id="tFly">🪽<small>UÇ</small></button>
   </div>
 </div>
 
@@ -61,8 +94,8 @@
 <!-- Paneller -->
 <div id="screen" class="hidden"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="js/vendor/three.min.js"></script>
+<script src="js/vendor/peerjs.min.js"></script>
 <script src="js/core.js"></script>
 <script src="js/models.js"></script>
 <script src="js/worlds.js"></script>

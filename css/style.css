@@ -78,6 +78,32 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;outline:
 .act.big{grid-column:2;width:92px;height:92px;font-size:2.3rem;background:var(--sun);box-shadow:0 6px 0 var(--sun-d),0 10px 16px rgba(0,0,0,.25);order:-1}
 .act:active,.act.on{transform:translateY(3px) scale(.95);background:var(--leaf)}
 
+.act{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;padding:0}
+.act small{font:800 .52rem var(--font-b);letter-spacing:.02em;margin-top:2px;color:var(--ink);opacity:.85}
+.act.big small{font-size:.62rem}
+.act.hit{background:#ffe0d6;box-shadow:0 5px 0 #e9a28f,0 8px 14px rgba(0,0,0,.25)}
+.act.net{background:#dff3ff;box-shadow:0 5px 0 #8cc3e2,0 8px 14px rgba(0,0,0,.25)}
+.act.cool{filter:grayscale(.9) brightness(.9)}
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse at 50% 45%,rgba(0,0,0,0) 55%,rgba(20,14,40,.28) 100%)}
+#energyBar{position:fixed;left:50%;top:calc(92px + var(--safe-t));transform:translateX(-50%);display:flex;align-items:center;gap:8px;pointer-events:none;z-index:6;background:rgba(255,246,227,.94);border-radius:99px;padding:4px 12px 4px 10px;box-shadow:0 4px 0 rgba(240,223,185,.95),0 8px 14px rgba(43,35,64,.2)}
+#energyBar div{width:min(150px,30vw);height:12px;border-radius:99px;background:#e6dcc0;overflow:hidden}
+#energyBar i{display:block;height:100%;width:100%;transform-origin:left;background:linear-gradient(90deg,#5ec8ff,#b8f27a)}
+#bootError{position:fixed;inset:0;z-index:999;display:grid;place-items:center;background:#9fdcff;padding:24px;text-align:center;font-family:var(--font-b)}
+#bootError h2{font-family:var(--font-d);font-size:2rem;margin:0 0 6px}
+#bootError p{font-weight:800;max-width:30em;margin:8px auto}
+#bootError button{font:800 1.2rem var(--font-d);color:#fff;background:var(--leaf);border:0;border-radius:18px;padding:.5em 1.2em;box-shadow:0 6px 0 var(--leaf-d)}
+#bootError small{display:block;opacity:.6;word-break:break-word;margin-top:10px}
+.sizebox{display:flex;align-items:center;gap:10px;background:#fff;border-radius:18px;padding:8px 14px;box-shadow:0 5px 0 #e7dcc2}
+.sizebox input[type=range]{flex:1;accent-color:var(--leaf)}
+.sizebox b{font-family:var(--font-d);min-width:3.2em;text-align:right}
+.codecard{background:#fff;border-radius:22px;padding:14px;box-shadow:0 5px 0 #e7dcc2;margin:6px 0 12px;text-align:center}
+.codecard .chunks{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:6px 0 10px}
+.codecard .chunks span{font-family:var(--font-d);font-weight:800;font-size:1.35rem;letter-spacing:.08em;background:var(--cream);border-radius:12px;padding:.1em .5em;color:var(--coral-d)}
+.codecard .chunks span:first-child{background:var(--coral);color:#fff}
+.codecard .btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.codein{font-family:var(--font-d)!important;font-size:1.25rem!important;letter-spacing:.06em;text-align:center;text-transform:uppercase}
+.stepno{display:inline-grid;place-items:center;width:1.7em;height:1.7em;border-radius:50%;background:var(--sun);color:#5a3b00;font-family:var(--font-d);font-weight:800;margin-right:.4em}
+
 /* ---------- Toast & diyalog ---------- */
 #toasts{position:fixed;top:calc(130px + var(--safe-t));left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;z-index:30}
 .toast{background:var(--ink);color:#fff;border-radius:16px;padding:.5em 1.1em;font-family:var(--font-d);font-weight:800;font-size:1.1rem;box-shadow:var(--shadow);animation:toast 3.2s forwards}
@@ -94,6 +120,8 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;outline:
   text-shadow:0 2px 0 #0007,0 0 6px #0006;white-space:nowrap;will-change:transform}
 .label.bubble{background:#fff;color:var(--ink);text-shadow:none;border-radius:14px;padding:.25em .7em;box-shadow:0 4px 0 #0002;font-size:1.05rem}
 .label.emote{font-size:2.2rem;animation:emote 2.2s forwards}
+.label.cheer{font-size:1.9rem;color:#fff3a8;-webkit-text-stroke:2px #e0671f;paint-order:stroke fill;text-shadow:0 4px 0 #b84a10,0 8px 14px #0005;animation:cheer 2.2s cubic-bezier(.2,1.4,.4,1) forwards}
+@keyframes cheer{0%{opacity:0;margin-top:20px;scale:.4}18%{opacity:1;scale:1.25}35%{scale:1}85%{opacity:1;margin-top:-34px}100%{opacity:0;margin-top:-60px}}
 @keyframes emote{from{opacity:0}10%{opacity:1}85%{opacity:1}to{opacity:0}}
 
 /* ---------- Paneller ---------- */
@@ -163,6 +191,7 @@ kbd{background:var(--ink);color:#fff;border-radius:8px;padding:2px 8px;font-fami
   #hud-right{gap:6px}.round-btn{width:44px;height:44px;font-size:1.25rem}
   #emoteRow{top:calc(66px + var(--safe-t))}#mpList{top:calc(124px + var(--safe-t))}
 }
+@media (max-height:520px){#actions{grid-template-columns:repeat(3,54px);gap:8px;right:12px;bottom:calc(14px + var(--safe-b))}.act{width:54px;height:54px;font-size:1.4rem}.act.big{grid-column:3;width:76px;height:76px;font-size:1.9rem}.act small{font-size:.44rem}#stickBase{width:112px;height:112px;left:24px;bottom:calc(24px + var(--safe-b))}}
 @media (pointer:coarse){#abilityBar{display:none}#interactBtn{bottom:calc(150px + var(--safe-b))}}
 @media (prefers-reduced-motion:reduce){.logo,#interactBtn,.badge{animation:none}}
 

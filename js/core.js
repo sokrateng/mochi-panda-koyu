@@ -111,7 +111,7 @@ const defaultSave = () => ({
   stats: { jumps: 0, stomps: 0, coins: 0, rolls: 0, abil: 0, chests: 0, worlds: 0 },
   daily: { date: '', quests: [], bonus: false },
   streak: { last: '', count: 0 },
-  difficulty: 'normal', settings: { music: true, sfx: true, shadows: true, chat: true, voice: false, time: 'auto', quality: (typeof matchMedia === 'function' && matchMedia('(pointer:coarse)').matches) ? 'low' : 'high', easy: false }, finale: false, intro: false, bugs: {},
+  difficulty: 'normal', settings: { music: true, sfx: true, shadows: true, chat: true, voice: false, time: 'auto', quality: (typeof matchMedia === 'function' && matchMedia('(pointer:coarse)').matches) ? 'low' : 'high', easy: false, size: 1 }, finale: false, intro: false, bugs: {},
 });
 const mergeSave = (base, src) => {
   if (!src || typeof src !== 'object') return base;
@@ -133,14 +133,63 @@ function loadSave() {
 function writeSave() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* dolu/engelli olabilir */ } }
 let saveTimer = 0;
 function queueSave() { clearTimeout(saveTimer); saveTimer = setTimeout(writeSave, 400); }
-function exportCode() { return 'MK1.' + btoa(unescape(encodeURIComponent(JSON.stringify(save)))); }
-function importCode(code) {
+/* ---------- Kısa kayıt kodu: MOCHI-XXXX-XXXX-… (bit paketleme + 32'lik tabanda yazım) ---------- */
+const CODE_ABC = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+const DIFF_IDS = ['easy', 'normal', 'hard'], TIME_IDS = ['auto', 'morning', 'evening'];
+const bitWriter = () => {
+  const bits = [];
+  const w = { bits, u(n, v) { for (let i = n - 1; i >= 0; i--) bits.push((v >>> i) & 1); }, g(v) { v = clamp(Math.floor(v) || 0, 0, 2147483647); const n = v ? 32 - Math.clz32(v) : 0; w.u(5, n); if (n) w.u(n, v); } };
+  return w;
+};
+const bitReader = (bits) => {
+  let p = 0;
+  const r = { u(n) { let v = 0; for (let i = 0; i < n; i++) { if (p >= bits.length) throw new Error('kısa'); v = v * 2 + bits[p++]; } return v; }, g() { const n = r.u(5); return n ? r.u(n) : 0; }, left: () => bits.length - p };
+  return r;
+};
+const checkBits = (bits) => { let h = 7; for (let i = 0; i < bits.length; i++) h = (h * 31 + bits[i] + i) & 255; return h; };
+function exportCode() {
+  const w = bitWriter(), s = save, st = s.settings;
+  w.u(4, 2);
+  const nm = new TextEncoder().encode(String(s.name || 'Mochi').slice(0, 12)).slice(0, 24); w.u(5, nm.length); nm.forEach((b) => w.u(8, b));
+  w.g(s.coins);
+  FRIEND_ORDER.forEach((f) => w.u(1, s.rescued[f] ? 1 : 0)); ['w1', 'w2', 'w3'].forEach((k) => w.u(1, s.bossDown[k] ? 1 : 0));
+  [s.finale, s.intro, st.easy, st.voice, st.music, st.sfx, st.shadows, st.chat, st.quality === 'low'].forEach((b) => w.u(1, b ? 1 : 0));
+  w.u(2, Math.max(0, DIFF_IDS.indexOf(s.difficulty))); w.u(2, Math.max(0, TIME_IDS.indexOf(st.time)));
+  w.u(7, clamp(Math.round(((st.size || 1) - 0.6) * 100), 0, 127));
+  Object.keys(SHOP).forEach((c) => { w.u(4, Math.max(0, SHOP[c].items.findIndex((i) => i.id === s.equip[c]))); SHOP[c].items.forEach((i) => w.u(1, s.owned[c + ':' + i.id] ? 1 : 0)); });
+  Object.keys(BUGS).forEach((k) => w.u(1, s.bugs[k] ? 1 : 0));
+  w.u(7, clamp(s.streak.count, 0, 127)); w.u(1, s.streak.last === todayStr() || s.streak.last === yesterdayStr() ? 1 : 0);
+  w.u(8, checkBits(w.bits));
+  while (w.bits.length % 5) w.bits.push(0);
+  let out = ''; for (let i = 0; i < w.bits.length; i += 5) out += CODE_ABC[w.bits.slice(i, i + 5).reduce((a, b) => a * 2 + b, 0)];
+  return out;
+}
+const codeChunks = (raw) => ['MOCHI', ...(raw.match(/.{1,4}/g) || [])];
+const prettyCode = () => codeChunks(exportCode()).join('-');
+function importCode(input) {
   try {
-    const t = String(code).trim();
-    if (!t.startsWith('MK1.')) return false;
-    const obj = JSON.parse(decodeURIComponent(escape(atob(t.slice(4)))));
-    if (typeof obj !== 'object' || typeof obj.coins !== 'number') return false;
-    save = mergeSave(defaultSave(), obj); writeSave(); return true;
+    const t = String(input).trim();
+    if (t.startsWith('MK1.')) {
+      const obj = JSON.parse(decodeURIComponent(escape(atob(t.slice(4)))));
+      if (typeof obj !== 'object' || typeof obj.coins !== 'number') return false;
+      save = mergeSave(defaultSave(), obj); writeSave(); return true;
+    }
+    let c = t.toUpperCase().replace(/^[^A-Z0-9]*MOCHI/, '').replace(/O/g, '0').replace(/[IL]/g, '1').replace(/[^0-9A-Z]/g, '');
+    if (c.startsWith('M0CH1')) c = c.slice(5);
+    const bits = []; for (const ch of c) { const v = CODE_ABC.indexOf(ch); if (v < 0) return false; for (let i = 4; i >= 0; i--) bits.push((v >> i) & 1); }
+    const rd = bitReader(bits); if (rd.u(4) !== 2) return false;
+    const base = defaultSave(), s = base, st = s.settings;
+    const n = rd.u(5), nb = new Uint8Array(n); for (let i = 0; i < n; i++) nb[i] = rd.u(8);
+    s.name = new TextDecoder().decode(nb).slice(0, 12) || 'Mochi'; s.coins = rd.g();
+    FRIEND_ORDER.forEach((f) => { if (rd.u(1)) s.rescued[f] = true; }); ['w1', 'w2', 'w3'].forEach((k) => { if (rd.u(1)) s.bossDown[k] = true; });
+    s.finale = !!rd.u(1); s.intro = !!rd.u(1); st.easy = !!rd.u(1); st.voice = !!rd.u(1); st.music = !!rd.u(1); st.sfx = !!rd.u(1); st.shadows = !!rd.u(1); st.chat = !!rd.u(1); st.quality = rd.u(1) ? 'low' : 'high';
+    s.difficulty = DIFF_IDS[rd.u(2)] || 'normal'; st.time = TIME_IDS[rd.u(2)] || 'auto'; st.size = clamp(rd.u(7) / 100 + 0.6, 0.6, 1.5);
+    Object.keys(SHOP).forEach((cat) => { const idx = rd.u(4); s.equip[cat] = (SHOP[cat].items[idx] || SHOP[cat].items[0]).id; SHOP[cat].items.forEach((i) => { if (rd.u(1)) s.owned[cat + ':' + i.id] = true; }); });
+    Object.keys(BUGS).forEach((k) => { if (rd.u(1)) s.bugs[k] = true; });
+    s.streak.count = rd.u(7); if (rd.u(1)) s.streak.last = yesterdayStr();
+    const used = bits.slice(0, bits.length - rd.left()), chk = rd.u(8);
+    if (chk !== checkBits(used)) return false;
+    save = mergeSave(defaultSave(), s); writeSave(); return true;
   } catch (e) { return false; }
 }
 /* Tüm süper güçler en baştan açık: her karakter hepsini kullanabilir */
@@ -185,11 +234,13 @@ function addStat(stat, n = 1) {
     if (q.progress >= q.goal) {
       q.done = true; addCoins(q.reward);
       G.ui && G.ui.toast(`✅ Görev tamamlandı! +${q.reward} 🪙`, 'gold'); Sfx.play('quest');
+      if (G.celebrate && G.player && G.mode === 'play') G.celebrate(G.player.pos.x, G.player.pos.y + 0.5, G.player.pos.z, false, 'Görev bitti! ✅');
     }
   }
   if (changed && !save.daily.bonus && save.daily.quests.length && save.daily.quests.every((q) => q.done)) {
     save.daily.bonus = true; addCoins(80);
     G.ui && G.ui.toast('🎁 Üç görev bitti! Altın sandık: +80 🪙', 'gold'); Sfx.play('rescue');
+    if (G.celebrate && G.player && G.mode === 'play') setTimeout(() => G.celebrate(G.player.pos.x, G.player.pos.y + 0.5, G.player.pos.z, true, 'Üçü de bitti! 🎁'), 500);
   }
   if (changed) G.ui && G.ui.questsChanged();
   queueSave();
@@ -253,7 +304,31 @@ const Sfx = {
       case 'boss': this.osc(110, 0.6, 'sawtooth', 0.25, -40); this.noise(0.4, 0.3); break;
       case 'rescue': [523, 659, 784, 1046, 784, 1046, 1318].forEach((f, i) => this.osc(f, 0.3, 'triangle', 0.25, 0, i * 0.11)); break;
       case 'emote': this.osc(880, 0.1, 'sine', 0.15); break;
+      case 'hit': this.osc(180, 0.12, 'square', 0.2, -100); this.noise(0.08, 0.25); break;
+      case 'whoosh': this.noise(0.18, 0.18); this.osc(500, 0.2, 'triangle', 0.1, -300); break;
+      case 'net': this.noise(0.25, 0.22); this.osc(700, 0.3, 'sine', 0.12, -450); break;
+      case 'caught': this.osc(300, 0.18, 'triangle', 0.2, 200); this.osc(450, 0.25, 'triangle', 0.2, 300, 0.1); break;
+      case 'pop': this.osc(900, 0.09, 'sine', 0.25, 700); this.noise(0.06, 0.2); this.osc(1500, 0.12, 'triangle', 0.15, 0, 0.06); break;
+      case 'trap': this.osc(160, 0.25, 'sawtooth', 0.22, -90); this.noise(0.12, 0.25); break;
+      case 'yay': this.yay(false); break;
+      case 'yayBig': this.yay(true); break;
     }
+  },
+  /* "Yuppi!" sesi: kayan iki ses + çan arpeji + alkış */
+  yay(big) {
+    const c = this.ctx; if (!c) return;
+    const vox = (f0, f1, dur, when, vol) => {
+      const t0 = c.currentTime + when, o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain(), lfo = c.createOscillator(), lg = c.createGain();
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(f1, t0 + dur * 0.8);
+      f.type = 'bandpass'; f.Q.value = 5; f.frequency.setValueAtTime(900, t0); f.frequency.exponentialRampToValueAtTime(2400, t0 + dur);
+      lfo.frequency.value = 7; lg.gain.value = f0 * 0.015; lfo.connect(lg); lg.connect(o.frequency);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(f); f.connect(g); g.connect(this.sfxG); o.start(t0); lfo.start(t0); o.stop(t0 + dur + 0.05); lfo.stop(t0 + dur + 0.05);
+    };
+    vox(330, 520, 0.2, 0, 0.5); vox(520, 880, 0.34, 0.17, 0.55);
+    if (big) { vox(440, 700, 0.2, 0.5, 0.45); vox(700, 1100, 0.4, 0.66, 0.5); }
+    [1046, 1318, 1568, 2093].forEach((f, i) => this.osc(f, 0.35, 'sine', 0.16, 0, 0.3 + i * 0.07 + (big ? 0.3 : 0)));
+    this.noise(big ? 0.9 : 0.45, 0.1, 0.35);
   },
   tick() {
     if (!this.ctx || !save.settings.music || this.ctx.state !== 'running') { if (this.ctx) this.next = Math.max(this.next, this.ctx.currentTime); return; }
