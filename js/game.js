@@ -119,7 +119,7 @@ const P = (G.player = {
 });
 const cam = { yaw: 0, pitch: 0.42, dist: 9.5, pos: new T.Vector3(), target: new T.Vector3(), dragging: false };
 const Input = { keys: new Set(), tx: 0, tz: 0, jumpTouch: false, downTouch: false, interact: false };
-const MAX_ENERGY = 5;
+const maxEn = () => (DIFFICULTY[save.difficulty] || DIFFICULTY.normal).fly;
 /* Karakter boyutu ayarlanabilir: çarpışma kutusu da onunla birlikte büyür/küçülür */
 let HW = 0.38, PH = 1.7;
 const charSize = () => clamp(save.settings.size || 1, 0.6, 1.5);
@@ -139,7 +139,7 @@ function loadWorld(id, opts = {}) {
   const apply = () => {
     if (G.world) { scene.remove(G.world.group); G.world.group.traverse((c) => { if (c.isLight) c.dispose && c.dispose(); }); }
     G.bossFight = false; $('bossBar').classList.add('hidden');
-    const w = WORLD_BUILDERS[id](); G.world = w; scene.add(w.group);
+    const w = WORLD_BUILDERS[id](); G.world = w; scene.add(w.group); G.ex && G.ex.onWorld(w);
     applyTod(w);
     water.position.y = w.waterY; waterMat.color.set(w.water); waterMat.emissive.set(id === 'w2' ? 0x2a1580 : 0x000000);
     w.lights.slice(0, 6).forEach((l) => { const pl = new T.PointLight(l.c, 1.1, 30, 1.6); pl.position.set(l.x, l.y, l.z); w.group.add(pl); });
@@ -150,7 +150,7 @@ function loadWorld(id, opts = {}) {
     const today = todayStr(); w.chests.forEach((c) => { if (save.chests[c.key] === today) { c.open = true; c.lid.rotation.x = -1.7; } });
     if (id === 'village' && rescuedCount() === 5) startCelebration(w);
     const sp = opts.pos || w.spawn; P.pos.set(sp.x, sp.y + (opts.pos ? 0.5 : 0), sp.z); P.vel.set(0, 0, 0); P.respawn.copy(w.spawn); P.respawn.y += 0.2;
-    P.inv = 0; P.fly = false; P.rolling = 0; P.standing = null; P.coyote = 0; P.energy = MAX_ENERGY; P.hitCd = 0; P.netCd = 0; P.punch = 0; Nets.clear();
+    P.inv = 0; P.fly = false; P.rolling = 0; P.standing = null; P.coyote = 0; P.energy = maxEn(); P.hitCd = 0; P.netCd = 0; P.punch = 0; Nets.clear();
     P.yaw = id === 'village' ? Math.PI : Math.PI; cam.yaw = 0; cam.pitch = 0.42; snapCamera();
     Sfx.setTheme(w.theme === 'village' || id === 'village' ? 'village' : id);
     G.ui && G.ui.worldChanged(id);
@@ -385,7 +385,7 @@ function doInvis() {
 function toggleFly() {
   if (!G.world || G.paused || !hasAbility('fly')) return;
   if (P.fly) { P.fly = false; return; }
-  if (P.energy < 0.6) { G.ui.toast('🪽 Enerji doluyor…'); return; }
+  if (P.energy < 1.5) { G.ui.toast('🪽 Enerji doluyor…'); return; }
   P.fly = true; P.vel.y = 4; P.onGround = false; Sfx.play('fly'); addStat('abil');
 }
 function toggleSprint(on) { if (!hasAbility('sprint')) return; if (on !== undefined) P.sprintOn = on; else P.sprintOn = !P.sprintOn; if (P.sprintOn) { Sfx.play('dash'); addStat('abil'); } }
@@ -435,6 +435,7 @@ function respawn() {
 }
 const approach = (v, t, a) => (v < t ? Math.min(t, v + a) : Math.max(t, v - a));
 function updatePlayer(dt) {
+  if (G.ex && G.ex.hold(dt)) return;
   const w = W(), p = P.pos, v = P.vel;
   P.jumpBuf = Math.max(0, P.jumpBuf - dt); P.rollCd = Math.max(0, P.rollCd - dt); P.inv = Math.max(0, P.inv - dt); P.invisCd = Math.max(0, P.invisCd - dt);
   if (P.invis > 0) { P.invis -= dt; if (P.invis <= 0 && insideBarrier()) P.invis = 0.1; }
@@ -445,7 +446,7 @@ function updatePlayer(dt) {
   if (P.standing && P.standing.mover) { p.x += P.standing.mover.dx; p.z += P.standing.mover.dz; }
   const d = moveDir(), hasIn = d.lengthSq() > 0.01;
   const veh = P.vehicle ? VEH[P.vehicle] : null;
-  let speed = 7.2; if (P.sprintOn && hasAbility('sprint')) speed = 11.5; if (P.fly) speed = 9.5; if (veh && !P.fly) speed = veh.speed * (P.sprintOn ? 1.18 : 1);
+  let speed = 7.2; if (P.sprintOn && hasAbility('sprint')) speed = 11.5; if (P.fly) speed = 9.5; if (G.ex) speed *= G.ex.speedMul(); if (veh && !P.fly) speed = veh.speed * (P.sprintOn ? 1.18 : 1);
   const inMud = P.onGround && !P.standing && w.mudZones.some((m) => Math.hypot(p.x - m.x, p.z - m.z) < m.r);
   if (inMud) { speed *= 0.5; if (Math.hypot(v.x, v.z) > 1 && Math.random() < 0.2) FX.spawn(p.x + rand(-0.3, 0.3), p.y + 0.15, p.z + rand(-0.3, 0.3), rand(-1, 1), rand(1, 3), rand(-1, 1), 0x6b4a2e, 0.22, 0.5, 8); if (G.time - (G.mudMsg || -99) > 8) { G.mudMsg = G.time; G.ui.toast('🟤 Çamur çukuru! Burada yavaşlarsın.'); } }
   const ice = P.onGround && ((P.standing && P.standing.type === 'ice') || (!P.standing && P.groundIce));
@@ -469,7 +470,7 @@ function updatePlayer(dt) {
     tryJump();
     if (!P.jumpHeld && v.y > 0 && !P.cut) { v.y *= 0.55; P.cut = true; }
     v.y = Math.max(-32, v.y - (v.y < 0 ? 36 : 27) * dt);
-    P.energy = Math.min(MAX_ENERGY, P.energy + dt * (P.onGround ? 2.2 : 0.35));
+    if (P.energy <= maxEn()) P.energy = Math.min(maxEn(), P.energy + dt * (P.onGround ? 6 : 0.5) * DIFFICULTY[save.difficulty].regen);
   }
   const wasGround = P.onGround; P.wasGround = wasGround; P.onGround = false; P.standing = null; P.groundIce = false;
   const near = w.solids;
@@ -581,9 +582,9 @@ function updateWorld(dt) {
     b.mesh.position.y = b.y + Math.sin(t * 1.6 + b.ph) * 0.35; b.mesh.rotation.y += dt * 0.6; b.mesh.rotation.z = Math.sin(t * 1.1 + b.ph) * 0.08;
     const bx = p.x - b.x, bz = p.z - b.z, by = p.y + PH * 0.5 - b.mesh.position.y;
     if (bx * bx + bz * bz + by * by < 2.4 * Math.max(1, charSize() * charSize())) {
-      b.taken = true; b.t = 25; b.mesh.visible = false; const was = P.energy; P.energy = Math.min(MAX_ENERGY, P.energy + 2.5);
+      b.taken = true; b.t = 25; b.mesh.visible = false; const was = P.energy; P.energy = Math.min(Math.max(maxEn(), P.energy), P.energy + maxEn() * 0.5);
       Sfx.play('pop'); FX.burst(b.x, b.mesh.position.y, b.z, b.color, 16, 5, 0.3, 0.8, 6, 2); FX.burst(b.x, b.mesh.position.y, b.z, 0xffffff, 6, 3, 0.2, 0.5, 2, 1);
-      G.ui.toast(P.energy >= MAX_ENERGY && was >= MAX_ENERGY - 0.05 ? '🎈 Pat! Enerjin zaten dolu.' : '🎈 Enerji balonu! Uçuş enerjin doldu.', 'gold'); addStat('abil');
+      G.ui.toast(P.energy >= maxEn() && was >= maxEn() - 0.05 ? '🎈 Pat! Enerjin zaten dolu.' : '🎈 Enerji balonu! Uçuş enerjin doldu.', 'gold'); addStat('abil');
     }
   }
   // dikenli tuzaklar
@@ -643,6 +644,7 @@ function updatePlayerVisual(dt) {
   const al = P.invis > 0 ? 0.28 : 1; if (al !== P.alpha) { P.alpha = al; setAlpha(m, al); }
   m.visible = !(P.inv > 0 && Math.floor(t * 20) % 2 === 0);
   if (G.mode !== 'play' && G.mode !== 'wardrobe') m.visible = G.mode === 'wardrobe';
+  if (G.ex) G.ex.visual(m, dt);
 }
 
 /* ---------- Kamera ---------- */
@@ -678,7 +680,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'Space') doJump(); else if (e.code === 'KeyC' && !P.fly) doRoll(); else if (e.code === 'KeyV') doInvis(); else if (e.code === 'KeyF') toggleFly();
   else if (e.code === 'KeyX' || e.code === 'KeyJ') doHit(); else if (e.code === 'KeyN' || e.code === 'KeyQ') Nets.throw();
   else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') { P.sprintKey = true; toggleSprint(true); }
-  else if (/^Digit[0-5]$/.test(e.code)) selectVehicle(e.code === 'Digit0' ? null : VEH_ORDER[+e.code.slice(5) - 1]); else if (e.code === 'KeyB') G.ui.openBag(); else if (e.code === 'KeyE' && G.interact) G.interact.fn(); else if (e.code === 'Escape') G.ui.openMenu(); else if (e.code === 'KeyM') G.ui.toggleMute();
+  else if (/^Digit[0-5]$/.test(e.code)) selectVehicle(e.code === 'Digit0' ? null : VEH_ORDER[+e.code.slice(5) - 1]); else if (e.code === 'KeyB') G.ui.openBag(); else if (e.code === 'KeyM') G.ex.openMap(); else if (e.code === 'KeyE' && G.interact) G.interact.fn(); else if (e.code === 'Escape') G.ui.openMenu(); else if (e.code === 'KeyM') G.ui.toggleMute();
 });
 addEventListener('keyup', (e) => { Input.keys.delete(e.code); if (e.code === 'Space') { P.jumpHeld = false; } });
 addEventListener('blur', () => Input.keys.clear());
@@ -712,7 +714,7 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now; G.time += dt;
   if (G.world) {
     if (G.mode === 'play' && !G.paused) {
-      updatePlayer(dt * 0.5); updatePlayer(dt * 0.5); updateWorld(dt);
+      updatePlayer(dt * 0.5); updatePlayer(dt * 0.5); updateWorld(dt); G.ex && G.ex.update(dt);
     } else if (G.mode === 'title' || G.paused) { updateWorld(0.0001); }
     if (G.mode === 'title') { P.vel.set(0, 0, 0); }
     updatePlayerVisual(dt); updateCamera(dt);

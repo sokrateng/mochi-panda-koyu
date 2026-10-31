@@ -17,7 +17,7 @@ function closeScreen() {
 }
 scrEl.addEventListener('click', (e) => {
   if (e.target === scrEl && !['title', 'story', 'finale'].includes(Scr.kind)) { closeScreen(); return; }
-  const b = e.target.closest('[data-act]'); if (!b) return; const f = ACT[b.dataset.act]; if (f) f(b.dataset, b);
+  const b = e.target.closest('[data-act]'); if (!b) return; const f = ACT[b.dataset.act] || (G.ex && G.ex.acts[b.dataset.act]); if (f) f(b.dataset, b);
 });
 addEventListener('keydown', (e) => { if (e.code === 'Escape' && Scr.open && !['title', 'story', 'finale'].includes(Scr.kind)) { e.preventDefault(); closeScreen(); } });
 const closeBtn = '<button class="round-btn close" data-act="close" aria-label="Kapat">✖</button>';
@@ -49,12 +49,12 @@ const ui = (G.ui = {
     document.querySelectorAll('.ab').forEach((el) => {
       const id = el.dataset.ab, on = (id === 'sprint' && P.sprintOn) || (id === 'fly' && P.fly) || (id === 'invis' && P.invis > 0) || (id === 'roll' && P.rolling > 0);
       el.classList.toggle('active', on); const cd = el.querySelector('.cd');
-      const k = id === 'invis' ? P.invisCd / 10 : id === 'roll' ? P.rollCd / 0.55 : id === 'fly' ? 1 - P.energy / MAX_ENERGY : 0; cd.style.transform = `scaleY(${clamp(k, 0, 1)})`;
+      const k = id === 'invis' ? P.invisCd / 10 : id === 'roll' ? P.rollCd / 0.55 : id === 'fly' ? 1 - P.energy / maxEn() : 0; cd.style.transform = `scaleY(${clamp(k, 0, 1)})`;
     });
     const sp = $('tSprint'); sp.classList.toggle('on', !!P.sprintOn); $('tFly').classList.toggle('on', P.fly);
     $('tNet').classList.toggle('cool', P.netCd > 0); $('tHit').classList.toggle('cool', P.hitCd > 0.05);
-    const eb = $('energyBar'), show = G.mode === 'play' && (P.fly || P.energy < MAX_ENERGY - 0.05); eb.classList.toggle('hidden', !show);
-    if (show) eb.querySelector('i').style.transform = `scaleX(${clamp(P.energy / MAX_ENERGY, 0, 1)})`;
+    const eb = $('energyBar'), show = G.mode === 'play' && (P.fly || P.energy < maxEn() - 0.05); eb.classList.toggle('hidden', !show);
+    if (show) eb.querySelector('i').style.transform = `scaleX(${clamp(P.energy / maxEn(), 0, 1)})`;
   },
   netChanged() {
     if (G.mode === 'title' && Net.active && Net.status !== 'error') { setTimeout(() => { if (G.mode === 'title' && Net.active) startPlaying(); }, 700); }
@@ -79,6 +79,7 @@ const ui = (G.ui = {
     if (Scr.open) { closeScreen(); return; }
     showScreen(`<div class="panel">${closeBtn}<h2>Menü</h2><p class="sub">${esc(save.name)} • 🪙 ${save.coins} • Arkadaşlar ${rescuedCount()}/5</p>
       <div class="grid tiles">
+        <button class="tile" data-act="map"><span class="e">🗺️</span>Harita</button>
         <button class="tile" data-act="quests"><span class="e">📋</span>Günlük Görevler</button>
         <button class="tile" data-act="wardrobe"><span class="e">👗</span>Gardırop</button>
         <button class="tile" data-act="mp"><span class="e">🤝</span>Arkadaşla Oyna</button>
@@ -217,7 +218,7 @@ scrEl.addEventListener('change', (e) => { if (e.target.id === 'nameIn') { save.n
 function showTitle() {
   const has = rescuedCount() > 0 || save.coins > 0;
   showScreen(`<div class="panel title"><h1 class="logo">Mochi<small>Panda Köyü Macerası</small></h1><div class="stack">
-    <button class="btn sun" data-act="play">▶ ${has ? 'Devam Et' : 'Oyna'}</button><button class="btn sky" data-act="mp">🤝 Arkadaşla Oyna</button><button class="btn ghost" data-act="savepanel">💾 Kayıt</button></div></div>`, 'title', 'clear');
+    <button class="btn sun" data-act="play">▶ ${has ? 'Devam Et' : 'Oyna'}</button><button class="btn sky" data-act="mp">🤝 Arkadaşla Oyna</button><button class="btn ghost" data-act="savepanel">💾 Kayıt</button></div>${Ex.diffHtml()}</div>`, 'title', 'clear');
 }
 function startPlaying() {
   Sfx.init(); G.mode = 'play'; closeScreen(); $('hud').classList.remove('hidden'); if (isTouch) $('touch').classList.remove('hidden');

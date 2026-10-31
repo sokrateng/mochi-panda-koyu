@@ -34,6 +34,7 @@ const ABILITIES = [
 ];
 const WORLD_META = {
   village: { name: 'Panda Köyü',      music: 'village' },
+  arena:   { name: 'Yarış Arenası',   music: 'village' },
   w1:      { name: 'Bambu Ormanı',    music: 'w1' },
   w2:      { name: 'Gizli Mağara',    music: 'w2' },
   w3:      { name: 'Buzul Dağ',       music: 'w3' },
@@ -98,9 +99,9 @@ const BUGS = {
   curtain: { icon: '⚡', name: 'Perde Çatlağı', hint: 'Sihirli perdenin önünde hızlı koşup zıpla…', how: 'Hızlı koşarken (Shift) sihirli perdenin önünde havada ikinci kez zıpla: perde bir an delinir.' },
 };
 const DIFFICULTY = {
-  easy:   { name: 'Kolay',  bossHp: 2, bossSpeed: 0.8 },
-  normal: { name: 'Normal', bossHp: 3, bossSpeed: 1.0 },
-  hard:   { name: 'Zor',    bossHp: 4, bossSpeed: 1.2 },
+  easy:   { name: 'Kolay', icon: '🟢', bossHp: 2, bossSpeed: 0.8, fly: 40, regen: 1.4, racer: 0.82, coin: 1, tile: 2.8, info: 'Patronlar yavaş ve 2 vuruşta düşer • 40 sn uçuş • yarışta rakipler yavaş' },
+  normal: { name: 'Orta',  icon: '🟡', bossHp: 3, bossSpeed: 1.0, fly: 30, regen: 1.0, racer: 0.95, coin: 1.25, tile: 2.2, info: 'Dengeli oyun • 30 sn uçuş • yarışta rakipler hızlı' },
+  hard:   { name: 'Zor',   icon: '🔴', bossHp: 4, bossSpeed: 1.25, fly: 22, regen: 0.7, racer: 1.08, coin: 1.6, tile: 1.6, info: 'Patronlar hızlı, 4 vuruş • 22 sn uçuş • rakipler çok hızlı • yarış ödülleri 1.6 kat' },
 };
 
 /* ---------- Kayıt ---------- */
@@ -110,6 +111,7 @@ const defaultSave = () => ({
   equip: { hat: 'none', glasses: 'none', scarf: 'none', pack: 'none', trail: 'none', fur: 'classic' },
   stats: { jumps: 0, stomps: 0, coins: 0, rolls: 0, abil: 0, chests: 0, worlds: 0 },
   daily: { date: '', quests: [], bonus: false },
+  wood: 0, food: {}, home: { stage: 0, wall: 'cream', roof: 'red', door: 'blue', items: {} }, race: { pts: 0, wins: {}, best: {} }, seen: {},
   streak: { last: '', count: 0 },
   difficulty: 'normal', settings: { music: true, sfx: true, shadows: true, chat: true, voice: false, time: 'auto', quality: (typeof matchMedia === 'function' && matchMedia('(pointer:coarse)').matches) ? 'low' : 'high', easy: false, size: 1 }, finale: false, intro: false, bugs: {},
 });

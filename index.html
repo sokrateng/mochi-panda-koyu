@@ -49,10 +49,13 @@
 <div id="hud" class="hidden">
   <div id="hud-left">
     <div class="pill" id="coins"><span class="coin-ico"></span><b id="coinCount">0</b></div>
+    <div class="pill hidden" id="woodPill" title="Odun">🪵 <b>0</b></div>
+    <canvas id="minimap" width="96" height="96" title="Harita (M)"></canvas>
   </div>
   <div id="hud-top">
     <div class="pill" id="worldName"></div>
     <div class="pill small" id="friendsCount"></div>
+    <div class="pill small" id="modePill"></div>
   </div>
   <div id="hud-right">
     <button class="round-btn" id="btnBag" aria-label="Çanta">🎒</button>
@@ -69,6 +72,7 @@
   <div id="abilityBar"></div>
   <button id="interactBtn" class="btn hidden"></button>
   <div id="hint" class="hidden"></div>
+  <div id="cookBar" class="hidden"><span id="cookTxt"></span><div class="bar"><i id="cookFill"></i></div></div>
 </div>
 
 <!-- Dokunmatik kontroller -->
@@ -102,6 +106,9 @@
 <script src="js/worlds2.js"></script>
 <script src="js/game.js"></script>
 <script src="js/net.js"></script>
+<script src="js/extras.js"></script>
+<script src="js/home.js"></script>
+<script src="js/race.js"></script>
 <script src="js/ui.js"></script>
 </body>
 </html>

@@ -30,3 +30,12 @@ Sonra `http://localhost:3000` adresini aç. 3B kütüphane (three.js) ve PeerJS 
 
 ## Kontroller
 `WASD` yürü · `Boşluk` zıpla (havada tekrar: çift zıplama) · `X` vur · `N` ağ at · `C` yuvarlan · `Shift` hızlı koş · `V` görünmez ol · `F` uç · `1-5` araç · `B` çanta · `E` konuş/kullan · `Enter` sohbet. Dokunmatik cihazlarda joystick ve etiketli düğmeler (ZIPLA, VUR, AĞ, KOŞ, YUVARLAN, GİZLEN, UÇ) çıkar.
+
+## Yeni: Harita, Ev, Yarışlar
+
+- 🗺️ **Harita** (M tuşu ya da köşedeki mini harita): bölgeler, portallar, kurtarılmamış arkadaşlar. Arkadaş kurtardıkça yeni bölgeler açılır (Yarış Arenası: 1, Ev Arsası: 2 arkadaş; Mağara ve Buzul Dağ önceki dünyayı bitirince).
+- 🟢🟡🔴 **Kolay / Orta / Zor** modu başlık ekranında: uçuş süresi 40 / 30 / 22 sn, patron gücü, yarış rakipleri ve ödüller buna göre değişir.
+- 🐿️🐦 Ağaçlarda sincaplar ve kuşlar yaşar; yaklaşınca kaçar ya da uçarlar.
+- 🏡 **Ev Arsası** (köyün güneybatısı): ağaç kes 🪓, odun topla 🪵, Yapı Tezgahı'nda evi temel-duvar-çatı olarak kur, renkleri seç, eşya yerleştir. Koltuğa otur, yatağa yat (enerji dolar).
+- 🍖 **Mangal ve kamp ateşi**: yemek pişir, çantana koy, yiyince ekstra enerji ve hızlı koşu. Evi bitirince kamp ateşinde **pijama partisi** yap.
+- 🏁 **Yarış Arenası**: Koşu Parkuru, Engelli Parkur, Survivor (Düşen Karolar) ve Şampiyonlar Kupası. Arkadaşların seninle yarışır (ya da 👀 izle). Kazandıkça sonraki yarışlar ve özel eşyalar (Taç, Astronot, Galaksi rengi, Gökkuşağı izi) açılır.
