@@ -277,7 +277,7 @@ function makeVehicle(kind) {
     case 'scooter':
       g.add(mesh(geo('box', 0.26, 0.05, 0.95), M(0xff6f61), 0, 0.16, -0.05)); g.add(mesh(geo('box', 0.24, 0.01, 0.8), M(0x23232b), 0, 0.19, -0.05));
       strut(g, [0, 0.16, 0.42], [0, 1.2, 0.34], 0.028, 0xcfd4dc); g.add(mesh(geo('box', 0.56, 0.04, 0.04), M(0x23232b), 0, 1.2, 0.34));
-      [-1, 1].forEach((s) => g.add(mesh(geo('cyl', 0.03, 0.03, 0.1, 8), M(0xffc83a), s * 0.3, 1.2, 0.34)).rotation.z = Math.PI / 2);
+      [-1, 1].forEach((s) => g.add(chain(mesh(geo('cyl', 0.03, 0.03, 0.1, 8), M(0xffc83a), s * 0.3, 1.2, 0.34), 'rotation', 'z', Math.PI / 2)));
       addW(0, 0.14, 0.5, 0.14, 0.05, 0x23232b, 0xcfd4dc); addW(0, 0.12, -0.5, 0.12, 0.05, 0x23232b, 0xcfd4dc);
       break;
     case 'bike': {
@@ -297,8 +297,31 @@ function makeVehicle(kind) {
       const sw = mesh(geo('tor', 0.13, 0.025, 16), dark, 0, 0.92, 0.12); sw.rotation.x = 1.1; g.add(sw);
       [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([sx, sz]) => addW(sx * 0.72, 0.32, sz * 0.78, 0.32, 0.24, 0x1c1c22, 0xdfe3ea));
       break; }
+    case 'carpet': {
+      const main = M(0xd13a5a, { roughness: 0.85 }), gold = M(0xffc83a, { metalness: 0.5, roughness: 0.4 }), blue = M(0x2b4fa8, { roughness: 0.85 });
+      const base = mesh(geo('box', 1.5, 0.07, 2.1), main, 0, 0.1, 0); g.add(base);
+      [[0, 1.02], [0, -1.02]].forEach(([x, z]) => g.add(mesh(geo('box', 1.5, 0.08, 0.1), gold, x, 0.11, z)));
+      [-0.71, 0.71].forEach((x) => g.add(mesh(geo('box', 0.1, 0.08, 2.1), gold, x, 0.11, 0)));
+      g.add(mesh(geo('box', 0.9, 0.08, 1.5), blue, 0, 0.115, 0)); { const o = mesh(geo('oct', 0.3), gold, 0, 0.17, 0); o.scale.set(1, 0.3, 1.6); g.add(o); }
+      for (let i = -3; i <= 3; i++) { [1, -1].forEach((s) => g.add(mesh(geo('cyl', 0.025, 0.025, 0.2, 5), gold, i * 0.2, 0.08, s * 1.16))); }
+      break; }
+    case 'plane': {
+      const red = M(0xe8453c, { metalness: 0.3, roughness: 0.4 }), white = M(0xf4f4f6), dark = M(0x23232b), chrome = M(0xdfe3ea, { metalness: 0.9, roughness: 0.2 });
+      const fus = mesh(geo('cyl', 0.34, 0.24, 2.4, 14), red, 0, 0.34, 0); fus.rotation.x = Math.PI / 2; g.add(fus);
+      g.add(mesh(geo('sph', 0.34, 12, 10), red, 0, 0.34, 1.2));
+      const wing = mesh(geo('box', 3.4, 0.07, 0.62), red, 0, 0.22, 0.25); g.add(wing); [-1, 1].forEach((s) => g.add(mesh(geo('box', 0.5, 0.075, 0.64), white, s * 1.5, 0.22, 0.25)));
+      const tailW = mesh(geo('box', 1.2, 0.05, 0.4), red, 0, 0.4, -1.1); g.add(tailW);
+      const fin = mesh(geo('box', 0.05, 0.5, 0.45), red, 0, 0.68, -1.1); fin.rotation.x = 0.2; g.add(fin);
+      g.add(mesh(geo('box', 0.5, 0.08, 0.9), dark, 0, 0.62, -0.1));
+      const sh = mesh(geo('box', 0.6, 0.32, 0.04), M(0xa8e4ff, { transparent: true, opacity: 0.45, roughness: 0.05 }), 0, 0.82, 0.62); sh.rotation.x = -0.5; g.add(sh);
+      const prop = new T.Group(); prop.position.set(0, 0.34, 1.55); g.add(prop);
+      { const nc = mesh(geo('cone', 0.12, 0.3, 10), chrome, 0, 0, 0.1); nc.rotation.x = Math.PI / 2; prop.add(nc); }
+      [0, 1].forEach((i) => { const b = mesh(geo('box', 0.14, 1.5, 0.04), dark, 0, 0, 0); b.rotation.z = i * Math.PI / 2; prop.add(b); });
+      [-1, 1].forEach((s) => { const st = mesh(geo('cyl', 0.03, 0.03, 0.32, 5), dark, s * 0.4, 0.05, 0.4); st.rotation.z = s * 0.3; g.add(st); const wl = mesh(geo('cyl', 0.13, 0.13, 0.08, 12), dark, s * 0.46, -0.08, 0.4); wl.rotation.z = Math.PI / 2; g.add(wl); });
+      g.userData.prop = prop;
+      break; }
   }
-  g.userData = { wheels, kind }; shadowAll(g); ownMats(g); return g;
+  g.userData = Object.assign({ wheels, kind }, g.userData.prop ? { prop: g.userData.prop } : {}); shadowAll(g); ownMats(g); return g;
 }
 /* araç boyutu ve rengi (oyuncunun ayarı) */
 const VEH_COLORS = [
@@ -306,7 +329,7 @@ const VEH_COLORS = [
   { id: 'green', c: 0x3fcf6a, n: 'Yeşil' }, { id: 'teal', c: 0x1fc8b6, n: 'Turkuaz' }, { id: 'blue', c: 0x2a8dff, n: 'Mavi' }, { id: 'purple', c: 0xa56bff, n: 'Mor' },
   { id: 'pink', c: 0xff6fb5, n: 'Pembe' }, { id: 'black', c: 0x2b2b33, n: 'Siyah' }, { id: 'white', c: 0xf4f4f6, n: 'Beyaz' }, { id: 'gold', c: 0xf2b705, n: 'Altın' },
 ];
-const VEH_PRIMARY = { skate: [0x3f8de0], inline: [0xe0533d, 0xff4d6d], scooter: [0xff6f61], bike: [0x2a9dff], car: [0xff4a43] };
+const VEH_PRIMARY = { skate: [0x3f8de0], inline: [0xe0533d, 0xff4d6d], scooter: [0xff6f61], bike: [0x2a9dff], car: [0xff4a43], carpet: [0xd13a5a], plane: [0xe8453c] };
 const vehStyle = () => (save.vstyle || (save.vstyle = { size: 1, color: 'def' }));
 const vehSize = () => clamp(vehStyle().size || 1, 0.5, 2.5);
 function styleVehicle(g, kind, style) {
@@ -325,5 +348,7 @@ function applyRiderPose(p, id, speed, dt, t) {
   if (v.sit) { u.legL.rotation.x = -1.15; u.legR.rotation.x = -1.15; u.armL.rotation.x = -0.95; u.armR.rotation.x = -0.95; u.armL.rotation.z = -0.22; u.armR.rotation.z = 0.22; }
   else if (v.hold) { u.armL.rotation.x = -0.85; u.armR.rotation.x = -0.85; u.armL.rotation.z = -0.18; u.armR.rotation.z = 0.18; u.legL.rotation.x = 0.1; u.legR.rotation.x = -0.15; }
   else { u.legL.rotation.x = 0.12; u.legR.rotation.x = -0.1; u.armL.rotation.z = -0.55 + Math.sin(t * 3) * 0.08; u.armR.rotation.z = 0.55 - Math.sin(t * 3) * 0.08; u.armL.rotation.x = 0; u.armR.rotation.x = 0; }
+  if (u.veh && u.veh.userData.prop) u.veh.userData.prop.rotation.z += dt * (speed > 1 ? 38 : 22);
+  if (u.veh && VEH[id].air) { u.veh.rotation.z = Math.sin(t * 2.2) * 0.05; u.veh.rotation.x = Math.sin(t * 1.7) * 0.04; }
   if (u.veh) for (const w of u.veh.userData.wheels) w.pv.rotation.x += (speed * dt) / (w.r * vs);
 }

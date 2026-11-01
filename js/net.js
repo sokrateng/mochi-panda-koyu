@@ -165,7 +165,7 @@ const Net = {
         if (p) { p.w = String(d.w); p.tx = num(d.x); p.ty = num(d.y); p.tz = num(d.z); p.tr = num(d.r, 20); p.a = d.a | 0; p.inv = d.i ? 1 : 0; p.vh = clamp(d.vh | 0, 0, 5); if (d.vc !== undefined) p.vs = cleanVs(d.vc, d.vz); if (!p.seen) { p.seen = true; if (p.mesh) p.mesh.position.set(p.tx, p.ty, p.tz); } p.last = G.time; }
         break; }
       case 'goto': if (G.looks) G.looks.followGoto(d); break;
-      case 'rescue': if (FRIENDS[d.f]) rescueFriend(d.f, true); break;
+      case 'rescue': if (!FRIENDS[d.f] && G.series) G.series.ensureId(d.f); if (FRIENDS[d.f]) rescueFriend(d.f, true); break;
       case 'emote': { const p = this.players.get(d.id); const e = EMOTES[d.e | 0]; if (p && e && p.mesh) Labels.temp(e, 'emote', (v) => v.set(p.mesh.position.x, p.mesh.position.y + 3, p.mesh.position.z), 2.2); break; }
       case 'bye': this.dropPlayer(d.id); break;
     }

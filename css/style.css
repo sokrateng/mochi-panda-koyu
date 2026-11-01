@@ -234,3 +234,7 @@ kbd{background:var(--ink);color:#fff;border-radius:8px;padding:2px 8px;font-fami
 #raceBig{position:fixed;left:50%;top:32%;transform:translate(-50%,-50%);z-index:8;font-family:var(--font-d);font-weight:800;font-size:clamp(3rem,13vw,7rem);color:#fff3a8;-webkit-text-stroke:3px #e0671f;paint-order:stroke fill;text-shadow:0 6px 0 #b84a10,0 12px 26px #0006;pointer-events:none;animation:cheer .9s cubic-bezier(.2,1.4,.4,1) both;white-space:nowrap}
 @media (max-height:520px){#minimap{width:64px;height:64px}#raceHud{top:calc(130px + var(--safe-t));min-width:140px;padding:5px 9px}#raceHud .rh-list div{font-size:.8rem}}
 @media (max-width:600px){#hud-top .pill#modePill{display:none}}
+.chatlog{background:#fffaf0;border-radius:18px;padding:10px;height:min(38vh,260px);overflow-y:auto;box-shadow:inset 0 3px 0 #efe3c8;display:flex;flex-direction:column;gap:8px}
+.chatlog .msg{max-width:84%;padding:8px 12px;border-radius:16px;font-weight:700;line-height:1.35;word-break:break-word}
+.chatlog .msg.fr{align-self:flex-start;background:#fff;box-shadow:0 3px 0 #e7dcc2}
+.chatlog .msg.me{align-self:flex-end;background:#ffd9a8;box-shadow:0 3px 0 #e8b878}

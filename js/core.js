@@ -83,13 +83,15 @@ const QUEST_POOL = [
   { stat: 'ride',   icon: '🛹', txt: (n) => `Araçlarınla ${n} metre yol yap`, range: [150, 400], reward: [15, 30] },
   { stat: 'worlds', icon: '🗺️', txt: (n) => `Bir dünyayı ziyaret et`,         range: [1, 1],   reward: [15, 25] },
 ];
-const VEH_ORDER = ['skate', 'inline', 'scooter', 'bike', 'car'];
+const VEH_ORDER = ['skate', 'inline', 'scooter', 'bike', 'car', 'carpet', 'plane'];
 const VEH = {
   skate:   { icon: '🛹', name: 'Kaykay',   speed: 26,   acc: 0.45, jump: 1.0,  lift: 0.12, z: 0,    sit: false, hold: false, desc: 'Hızlı ve kaygan' },
   inline:  { icon: '🛼', name: 'Paten',    speed: 25,   acc: 0.3,  jump: 0.95, lift: 0.1,  z: 0,    sit: false, hold: false, desc: 'Buz gibi kayar' },
   scooter: { icon: '🛴', name: 'Scooter',  speed: 28,   acc: 0.6,  jump: 0.85, lift: 0.16, z: -0.05, sit: false, hold: true,  desc: 'Dengeli ve çevik' },
   bike:    { icon: '🚲', name: 'Bisiklet', speed: 33,   acc: 0.5,  jump: 0.55, lift: 0.52, z: -0.2,  sit: true,  hold: false, desc: 'Çok hızlı' },
   car:     { icon: '🚙', name: 'Mini Araba', speed: 40, acc: 0.45, jump: 0.3,  lift: 0.3,  z: -0.3,  sit: true,  hold: false, desc: 'En hızlısı, üstü açık' },
+  carpet:  { icon: '🧞', name: 'Uçan Halı', speed: 30, acc: 0.5, jump: 0.3, lift: 0.14, z: 0, sit: true, hold: false, air: true, desc: 'Boşluk: yüksel • C: alçal • enerjin kadar uçar' },
+  plane:   { icon: '🛩️', name: 'Tek Pervaneli Uçak', speed: 46, acc: 0.4, jump: 0.3, lift: 0.46, z: -0.1, sit: true, hold: false, air: true, desc: 'Çok hızlı • Boşluk: yüksel • C: alçal' },
 };
 /* Gizli hileler (bug): sadece gizli kulübelerin yakınında çalışır, yalnızca içeri girmeye yarar */
 const BUGS = {
@@ -99,9 +101,9 @@ const BUGS = {
   curtain: { icon: '⚡', name: 'Perde Çatlağı', hint: 'Sihirli perdenin önünde hızlı koşup zıpla…', how: 'Hızlı koşarken (Shift) sihirli perdenin önünde havada ikinci kez zıpla: perde bir an delinir.' },
 };
 const DIFFICULTY = {
-  easy:   { name: 'Kolay', icon: '🟢', bossHp: 2, bossSpeed: 0.8, fly: 40, regen: 1.4, racer: 0.82, coin: 1, tile: 2.8, info: 'Patronlar yavaş ve 2 vuruşta düşer • 40 sn uçuş • yarışta rakipler yavaş' },
-  normal: { name: 'Orta',  icon: '🟡', bossHp: 3, bossSpeed: 1.0, fly: 30, regen: 1.0, racer: 0.95, coin: 1.25, tile: 2.2, info: 'Dengeli oyun • 30 sn uçuş • yarışta rakipler hızlı' },
-  hard:   { name: 'Zor',   icon: '🔴', bossHp: 4, bossSpeed: 1.25, fly: 22, regen: 0.7, racer: 1.08, coin: 1.6, tile: 1.6, info: 'Patronlar hızlı, 4 vuruş • 22 sn uçuş • rakipler çok hızlı • yarış ödülleri 1.6 kat' },
+  easy:   { name: 'Kolay', icon: '🟢', bossHp: 2, bossSpeed: 0.8, fly: 60, regen: 1.4, racer: 0.82, coin: 1, tile: 2.8, info: 'Patronlar yavaş ve 2 vuruşta düşer • 1 dk uçuş • yarışta rakipler yavaş' },
+  normal: { name: 'Orta',  icon: '🟡', bossHp: 3, bossSpeed: 1.0, fly: 60, regen: 1.0, racer: 0.95, coin: 1.25, tile: 2.2, info: 'Dengeli oyun • 1 dk uçuş • yarışta rakipler hızlı' },
+  hard:   { name: 'Zor',   icon: '🔴', bossHp: 4, bossSpeed: 1.25, fly: 60, regen: 0.7, racer: 1.08, coin: 1.6, tile: 1.6, info: 'Patronlar hızlı, 4 vuruş • 1 dk uçuş • rakipler çok hızlı • yarış ödülleri 1.6 kat' },
 };
 
 /* ---------- Kayıt ---------- */

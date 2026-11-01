@@ -318,6 +318,7 @@ function rescueFriend(fid, fromNet) {
   setTimeout(() => G.ui.showDialog(f.emoji, f.name, f.line), 600);
   setTimeout(() => G.ui.toast(`🎁 ${f.name} hediye verdi: ${giftName}${60 + (f.bonus || 0)} 🪙`, 'gold'), 1500);
   if (!fromNet && Net.active) Net.send({ t: 'rescue', f: fid });
+  if (G.series) G.series.afterRescue(fid);
   if (rescuedCount() === 5 && !save.finale) { save.finale = true; queueSave(); setTimeout(() => G.ui.openFinale(), 7000); }
   G.ui.abilitiesChanged();
 }
@@ -446,7 +447,7 @@ function updatePlayer(dt) {
   if (P.standing && P.standing.mover) { p.x += P.standing.mover.dx; p.z += P.standing.mover.dz; }
   const d = moveDir(), hasIn = d.lengthSq() > 0.01;
   const veh = P.vehicle ? VEH[P.vehicle] : null;
-  let speed = 21.6; if (P.sprintOn && hasAbility('sprint')) speed = 34.5; if (P.fly) speed = 19; if (G.ex) speed *= G.ex.speedMul(); if (veh && !P.fly) speed = veh.speed * (P.sprintOn ? 1.18 : 1);
+  let speed = 18; if (P.sprintOn && hasAbility('sprint')) speed = 29; if (P.fly) speed = 19; if (G.ex) speed *= G.ex.speedMul(); if (veh && !P.fly) speed = veh.speed * (P.sprintOn ? 1.18 : 1);
   const inMud = P.onGround && !P.standing && w.mudZones.some((m) => Math.hypot(p.x - m.x, p.z - m.z) < m.r);
   if (inMud) { speed *= 0.5; if (Math.hypot(v.x, v.z) > 1 && Math.random() < 0.2) FX.spawn(p.x + rand(-0.3, 0.3), p.y + 0.15, p.z + rand(-0.3, 0.3), rand(-1, 1), rand(1, 3), rand(-1, 1), 0x6b4a2e, 0.22, 0.5, 8); if (G.time - (G.mudMsg || -99) > 8) { G.mudMsg = G.time; G.ui.toast('🟤 Çamur çukuru! Burada yavaşlarsın.'); } }
   const ice = P.onGround && ((P.standing && P.standing.type === 'ice') || (!P.standing && P.groundIce));
@@ -462,7 +463,11 @@ function updatePlayer(dt) {
     for (const s of w.breakables) if (s.active && s.hutDoor && p.x + HW + 0.9 > s.minx && p.x - HW - 0.9 < s.maxx && p.z + HW + 0.9 > s.minz && p.z - HW - 0.9 < s.maxz && p.y < s.maxy) { breakWall(s); discoverBug('smash'); }
   }
   // dikey
-  if (P.fly) {
+  const airOn = !!(veh && veh.air && P.energy > 0 && (P.jumpHeld || Input.jumpTouch || !P.onGround));
+  if (airOn) {
+    const up = P.jumpHeld || Input.jumpTouch ? 9 : (Input.keys.has('KeyC') || Input.downTouch ? -12 : 0);
+    v.y = approach(v.y, up, 50 * dt); P.jumps = 1; P.jumpBuf = 0; if (!P.onGround) { P.energy -= dt; if (P.energy <= 0) G.ui.toast('⚡ Enerji bitti, yavaşça alçalıyorsun!'); }
+  } else if (P.fly) {
     const up = P.jumpHeld || Input.jumpTouch ? 6.5 : (Input.keys.has('KeyC') || Input.downTouch ? -26 : -22);
     v.y = approach(v.y, up, (up < 0 ? 140 : 40) * dt); P.energy -= dt; if (P.energy <= 0) { P.fly = false; G.ui.toast('🪽 Enerji bitti!'); }
   } else {
@@ -605,7 +610,7 @@ function updateWorld(dt) {
   // evler: içeri girince çatı kalkar, duvarlar saydamlaşır
   for (const h of w.houses) {
     const dx = p.x - h.o.x, dz = p.z - h.o.z, c = Math.cos(h.o.r), s = Math.sin(h.o.r), lx = dx * c - dz * s, lz = dx * s + dz * c;
-    const inside = Math.abs(lx) < h.hx + 0.5 && Math.abs(lz) < h.hz + 0.5 && p.y < 4.2;
+    const inside = Math.abs(lx) < h.hx + 0.5 && Math.abs(lz) < h.hz + 0.5 && p.y < (h.top || 4.2);
     h.op = lerp(h.op, inside ? 0.16 : 1, Math.min(1, dt * 7)); h.mat.transparent = true; h.mat.opacity = h.op; h.mat.depthWrite = h.op > 0.6; h.roof.visible = !inside;
     if (inside && !h.entered) { h.entered = true; G.ui.toast('🏠 Eve girdin! Yatağa, masaya ve rafa bak.'); } else if (!inside) h.entered = false;
   }
@@ -614,14 +619,14 @@ function updateWorld(dt) {
   G.ui.setHint(hint);
   let best = null, bd = 1e9;
   for (const it of w.interacts) { const dd = Math.hypot(p.x - it.x, p.z - it.z); if (dd < it.r && dd < bd && (it.y === undefined || Math.abs(p.y - it.y) < 2.2)) { bd = dd; best = it; } }
-  for (const n of w.npcs) { const dd = Math.hypot(p.x - n.x, p.z - n.z); if (dd < 3.2 && dd < bd) { bd = dd; best = { label: `💬 ${FRIENDS[n.fid].name} ile konuş`, fn: () => G.ui.showDialog(FRIENDS[n.fid].emoji, FRIENDS[n.fid].name, npcLine(n.fid)) }; } }
+  for (const n of w.npcs) { const dd = Math.hypot(p.x - n.x, p.z - n.z); if (dd < 3.2 && dd < bd) { bd = dd; best = { label: `💬 ${FRIENDS[n.fid].name} ile konuş`, fn: () => (G.chat ? G.chat.open(n.fid) : G.ui.showDialog(FRIENDS[n.fid].emoji, FRIENDS[n.fid].name, npcLine(n.fid))) }; } }
   G.interact = best; G.ui.setInteract(best);
   for (const n of w.npcs) { animCreature(n.mesh, t, 'idle', 1); n.mesh.rotation.y += angDiff(n.mesh.rotation.y, Math.atan2(p.x - n.x, p.z - n.z)) * Math.min(1, dt * 3) * (Math.hypot(p.x - n.x, p.z - n.z) < 8 ? 1 : 0); }
   if (w.celebrate && Math.random() < 0.08) FX.confetti(rand(-14, 14), rand(6, 10), rand(-14, 14) + 4, 18);
   if (w.fireflies && Math.random() < 0.3) FX.spawn(p.x + rand(-14, 14), p.y + rand(0.5, 6), p.z + rand(-14, 14), 0, 0.3, 0, pick([0xb6ffec, 0xe6c7ff]), 0.16, 3, 0);
   if (w.id === 'w3' && Math.random() < 0.6) FX.spawn(p.x + rand(-18, 18), p.y + rand(6, 14), p.z + rand(-18, 18), rand(-0.5, 0.5), -2.2, rand(-0.5, 0.5), 0xffffff, 0.14, 5, 0);
 }
-const npcLine = (fid) => ({ tavsan: 'Havada tekrar zıpla! Çok eğlenceli!', kaplumbaga: 'Yuvarlan ve tahta duvarları kır!', kedi: 'Shift ile hızlı koş! Köprüler seni yakalayamaz!', tilki: 'Görünmezken sihirli perdeleri geçersin. Hşşt!', minipanda: 'Uçarak gökteki adalara git, orada sandıklar var!' }[fid]);
+const npcLine = (fid) => (FRIENDS[fid] && FRIENDS[fid].line) || ({ tavsan: 'Havada tekrar zıpla! Çok eğlenceli!', kaplumbaga: 'Yuvarlan ve tahta duvarları kır!', kedi: 'Shift ile hızlı koş! Köprüler seni yakalayamaz!', tilki: 'Görünmezken sihirli perdeleri geçersin. Hşşt!', minipanda: 'Uçarak gökteki adalara git, orada sandıklar var!' }[fid]);
 
 /* ---------- Oyuncu görseli ---------- */
 function updatePlayerVisual(dt) {
@@ -681,7 +686,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'Space') doJump(); else if (e.code === 'KeyC' && !P.fly) doRoll(); else if (e.code === 'KeyV') doInvis(); else if (e.code === 'KeyF') toggleFly();
   else if (e.code === 'KeyX' || e.code === 'KeyJ') doHit(); else if (e.code === 'KeyN' || e.code === 'KeyQ') Nets.throw();
   else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') { P.sprintKey = true; toggleSprint(true); }
-  else if (/^Digit[0-5]$/.test(e.code)) selectVehicle(e.code === 'Digit0' ? null : VEH_ORDER[+e.code.slice(5) - 1]); else if (e.code === 'KeyB') G.ui.openBag(); else if (e.code === 'KeyM') G.ex.openMap(); else if (e.code === 'KeyE' && G.interact) G.interact.fn(); else if (e.code === 'Escape') G.ui.openMenu(); else if (e.code === 'KeyM') G.ui.toggleMute();
+  else if (/^Digit[0-7]$/.test(e.code)) selectVehicle(e.code === 'Digit0' ? null : VEH_ORDER[+e.code.slice(5) - 1]); else if (e.code === 'KeyB') G.ui.openBag(); else if (e.code === 'KeyM') G.ex.openMap(); else if (e.code === 'KeyE' && G.interact) G.interact.fn(); else if (e.code === 'Escape') G.ui.openMenu(); else if (e.code === 'KeyM') G.ui.toggleMute();
 });
 addEventListener('keyup', (e) => { Input.keys.delete(e.code); if (e.code === 'Space') { P.jumpHeld = false; } });
 addEventListener('blur', () => Input.keys.clear());

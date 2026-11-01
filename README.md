@@ -54,3 +54,10 @@ Sonra `http://localhost:3000` adresini aç. 3B kütüphane (three.js) ve PeerJS 
 - 👕 Yeni kıyafetler (13), şapkalar, gözlükler, atkılar ve sırt eşyaları. 🐾 **Karakter** sekmesinden kedi, köpek, kuş, tavşan, sincap, kaplumbağa… olabilirsin. 🐕 **Evcil** sekmesinden peşinden gelen bir dost seç.
 - 🤝 Çok oyunculu: araç rengi/boyutu, karakter biçimi ve evcil hayvan arkadaşlarında da görünür; **Birlikte gez** açıkken biri portala girince herkes aynı dünyaya gider.
 - 💾 "Bağlantıyı paylaş" artık tüm ilerlemeyi taşır (kısa kod eski eşyalarla sınırlı kalır).
+
+## Güncelleme: arkadaş evleri, yazışma, yeni araçlar
+- **Arkadaş evleri** 3 katlı ve geniş; yaklaştıkça kurulur. Her kurtarılan hayvanın köyde evi olur (43 arsa). Kapıda/halıda *Pijama Partisi*, bahçede *Mangal*.
+- **Yazışma:** kurtarılan arkadaşın yanında E ile sohbet penceresi açılır (yaz ya da hazır cümleleri seç).
+- **Araçlar:** 6 = Uçan Halı, 7 = Tek Pervaneli Uçak (Boşluk yükselir, C alçaltır). Uçuş enerjisi her modda 1 dakika.
+- Yürüme hızı bir kademe düşürüldü. Köydeki **bütün ağaçlar** kesilebilir.
+- Ev daha geniş; ev arsaları köy merkezine yakın (9 arsa). Dünyalar bitmez: her kurtarılan hayvan bir sonrakini açar (`js/worlds5.js`).

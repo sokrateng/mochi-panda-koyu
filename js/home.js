@@ -8,8 +8,9 @@ const HOME_PAL = {
 const HOME_KIND = { wall: '🧱 Duvar', roof: '🏠 Çatı', door: '🚪 Kapı' };
 const HOME_STAGES = [{ name: 'Temel', icon: '🪨', wood: 6 }, { name: 'Duvarlar', icon: '🧱', wood: 12 }, { name: 'Çatı', icon: '🏠', wood: 8 }, { name: '2. Kat', icon: '🪜', wood: 14 }, { name: '3. Kat', icon: '🏰', wood: 18 }];
 const HOME_PLOTS = [
-  { name: 'Güneş Bahçesi', x: -46, z: 38 }, { name: 'Çiçek Tepesi', x: -100, z: 15 }, { name: 'Göl Kıyısı', x: -85, z: -70 },
-  { name: 'Doğu Vadisi', x: 100, z: 25 }, { name: 'Kızıl Tepe', x: 70, z: -90 }, { name: 'Kuzey Ovası', x: 0, z: 95 },
+  { name: 'Güneş Bahçesi', x: -60, z: 36 }, { name: 'Çiçek Tepesi', x: -72, z: -24 }, { name: 'Göl Kıyısı', x: -46, z: -66 },
+  { name: 'Doğu Vadisi', x: 62, z: 36 }, { name: 'Kızıl Tepe', x: 72, z: -24 }, { name: 'Taş Ocağı', x: 46, z: -66 },
+  { name: 'Kuzey Ovası', x: 0, z: 76 }, { name: 'Uzak Vadi', x: -108, z: 14 }, { name: 'Doğu Yaylası', x: 108, z: 14 },
 ];
 const HOME_ITEMS = {
   bed: { name: 'Yatak', icon: '🛏️', wood: 4 }, sofa: { name: 'Koltuk', icon: '🛋️', wood: 3 }, table: { name: 'Masa', icon: '🍽️', wood: 2 },
@@ -24,13 +25,13 @@ const FOODS = {
   kebab:  { name: 'Şiş Kebap',       icon: '🍢', price: 10, en: 22, boost: 45, time: 4 },
 };
 const Home = (Ex.home = {
-  O: { x: -52, z: 38 }, HX: 8, HZ: 6, FY: 0.3, FH: 3.55, Y: { cx: -46, cz: 38, hx: 17, hz: 14 },
+  O: { x: -52, z: 38 }, HX: 10, HZ: 7.5, FY: 0.3, FH: 3.55, Y: { cx: -46, cz: 38, hx: 24, hz: 18 },
   fire: { x: -39, z: 32 }, grill: { x: -37, z: 45 }, bench: { x: -46, z: 28 }, plot: 0,
   w: null, solids: [], itx: [], seats: [], trees: [], grp: null, roof: null, wallMat: null, gate: null, chopCd: 0, grillT: 0, campT: 0, cook: null, party: null,
 });
 Home.setPlot = (i) => {
   const p = HOME_PLOTS[i] || HOME_PLOTS[0], cx = p.x, cz = p.z; Home.plot = HOME_PLOTS[i] ? i : 0;
-  Home.Y = { cx, cz, hx: 17, hz: 14 }; Home.O = { x: cx - 6, z: cz }; Home.fire = { x: cx + 7, z: cz - 6 }; Home.grill = { x: cx + 9, z: cz + 7 }; Home.bench = { x: cx, z: cz - 10 };
+  Home.Y = { cx, cz, hx: 24, hz: 18 }; Home.O = { x: cx - 8, z: cz }; Home.fire = { x: cx + 9, z: cz - 8 }; Home.grill = { x: cx + 11, z: cz + 9 }; Home.bench = { x: cx, z: cz - 13 };
 };
 Home.setPlot(0);
 Ex.mods.push(Home);
@@ -83,6 +84,11 @@ Home.chop = (tr) => {
     const n = 4 + (Math.random() < 0.4 ? 1 : 0); Home.setWood(save.wood + n); G.ui.toast(`🪵 +${n} odun! (Toplam ${save.wood})`, 'gold'); addStat && addStat('abil');
   }
 };
+Home.adoptTree = (w, t) => {
+  if (t.adopted) return; t.adopted = true; const inner = new T.Group(); [...t.g.children].forEach((c) => inner.add(c)); t.g.add(inner);
+  const tr = { x: t.x, z: t.z, s: t.s, g: t.g, inner, hp: 4, shake: 0, fall: 0, regrow: 0, blk: t.blk, it: null };
+  tr.it = { x: t.x, z: t.z, r: 2.7, label: '🪓 Ağacı Kes (4/4)', fn: () => Home.chop(tr) }; w.interacts.push(tr.it); Home.trees.push(tr);
+};
 Home.updateTrees = (dt) => {
   for (const tr of Home.trees) {
     if (tr.shake > 0) { tr.shake -= dt; tr.inner.rotation.z = Math.sin(G.time * 55) * 0.05 * (tr.shake / 0.4); } else if (tr.fall === 0) tr.inner.rotation.z = 0;
@@ -104,7 +110,7 @@ Home.buildYard = (w) => {
   Home.gate = fenceRect(w, Y.cx, Y.cz, Y.hx, Y.hz, gw);
   addSign(w, Y.cx + Y.hx + 2.2, 0, Y.cz - 3.4, '🔒'); Home.signG = w.signs[w.signs.length - 1];
   /* ağaçlar */
-  [[-14, -10.5, 1.15], [-9, -11.5, 1.0], [-14.5, 11, 1.1], [-9, 12.2, 1.05], [1, 12.2, 1.0], [12.5, -10.5, 1.1], [-15.5, -7, 0.95], [-4, -12, 1.0]].forEach(([x, z, s]) => chopTree(w, Y.cx + x, Y.cz + z, s));
+  [[-19, -13, 1.15], [-12, -14, 1.0], [-19, 13, 1.1], [-12, 14, 1.05], [0, 14.5, 1.0], [6, -15, 1.1], [14, -14.5, 1.0], [20, -4, 0.95], [20, 5, 1.05], [-22, 0, 1.0], [17, 14, 1.1], [-4, -15, 1.0]].forEach(([x, z, s]) => chopTree(w, Y.cx + x, Y.cz + z, s));
   /* patika taşları: kapıdan eve */
   const pathM = hm(0xd6c3a0); for (let x = Y.cx + Y.hx - 1; x > Home.O.x + Home.HX + 0.5; x -= 1.6) { const st = mesh(geo('cyl', 0.62, 0.66, 0.08, 9), pathM, x, 0.04, Home.O.z + Math.sin(x * 2) * 0.18); st.receiveShadow = true; w.group.add(st); }
   /* mangal */
@@ -263,13 +269,20 @@ Home.visual = (m) => {
   const s = Ex.seat, u = m.userData;
   if (!s) { if (Home.posed) { m.rotation.x = 0; Home.posed = false; if (u.body) { u.body.position.y = 0; } } return; }
   Home.posed = true; m.position.set(s.x, s.y, s.z); m.rotation.y = s.yaw; const t = G.time;
-  if (s.kind === 'lie') { m.rotation.x = -Math.PI / 2; m.position.y = s.y - 0.1; u.legL.rotation.x = 0; u.legR.rotation.x = 0; u.armL.rotation.set(0, 0, -0.3); u.armR.rotation.set(0, 0, 0.3); u.body.position.y = 0; u.head.rotation.z = Math.sin(t * 1.2) * 0.04; }
+  if (s.kind === 'lie') { m.rotation.order = 'YXZ'; m.rotation.x = -Math.PI / 2; m.position.y = s.y - 0.1; u.legL.rotation.x = 0; u.legR.rotation.x = 0; u.armL.rotation.set(0, 0, -0.3); u.armR.rotation.set(0, 0, 0.3); u.body.position.y = 0; u.head.rotation.z = Math.sin(t * 1.2) * 0.04; }
   else { m.rotation.x = 0; m.position.y = s.y - 0.12; u.legL.rotation.x = -1.4; u.legR.rotation.x = -1.4; u.armL.rotation.set(-0.5, 0, -0.2); u.armR.rotation.set(-0.5, 0, 0.2); u.body.position.y = -0.1 + Math.sin(t * 2) * 0.01; }
 };
 
 /* ---------- Ateşler, yemek ---------- */
 Home.fuelLeft = (t) => (t > 0 ? `${Math.ceil(t)} sn` : '');
+Home.curT = () => (Home.cookG ? Home.cookG.t : Home.grillT);
+Home.useGrillAt = (g) => {
+  if (g.t > 0) { Home.cookG = g; Home.openCook(); return; }
+  if (save.wood < 1) { G.ui.toast('🪵 Mangalı yakmak için 1 odun lazım. Ağaç kes!'); return; }
+  Home.setWood(save.wood - 1); g.t = 150; Sfx.play('pop'); FX.burst(g.x, 1.2, g.z, [0xff7a1a, 0xffd23f], 12, 3, 0.2, 0.6, -2, 3); G.ui.toast('🔥 Mangal yandı! Yemek pişirebilirsin.', 'gold');
+};
 Home.useGrill = () => {
+  Home.cookG = null;
   if (Home.grillT > 0) { Home.openCook(); return; }
   if (save.wood < 1) { G.ui.toast('🪵 Mangalı yakmak için 1 odun lazım. Ağaç kes!'); return; }
   Home.setWood(save.wood - 1); Home.grillT = 150; Sfx.play('pop'); FX.burst(Home.grill.x, 1.2, Home.grill.z, [0xff7a1a, 0xffd23f], 12, 3, 0.2, 0.6, -2, 3); G.ui.toast('🔥 Mangal yandı! Yemek pişirebilirsin.', 'gold');
@@ -284,7 +297,7 @@ Home.useCamp = () => {
 };
 Home.openCook = () => {
   const rows = Object.entries(FOODS).map(([id, f]) => `<div class="quest"><div class="qi">${f.icon}</div><div class="qt">${f.name}<br><small>⚡ +${f.en} sn enerji${f.boost ? ` • 🏃 ${f.boost} sn hızlı koşu` : ''}</small></div><div class="qr"><button class="tab" data-act="cook" data-id="${id}">${f.price} 🪙 Pişir</button></div></div>`).join('');
-  showScreen(`<div class="panel">${closeBtn}<h2>🍖 Mangal</h2><p class="sub">🪙 ${save.coins} • Mangal ${Home.fuelLeft(Home.grillT)} yanacak</p>${rows}${Home.foodList()}<p class="note">Pişen yemekler çantana girer. Yiyince uçuş enerjin bile dolu halinden fazla olur!</p></div>`, 'cook');
+  showScreen(`<div class="panel">${closeBtn}<h2>🍖 Mangal</h2><p class="sub">🪙 ${save.coins} • Mangal ${Home.fuelLeft(Home.curT())} yanacak</p>${rows}${Home.foodList()}<p class="note">Pişen yemekler çantana girer. Yiyince uçuş enerjin bile dolu halinden fazla olur!</p></div>`, 'cook');
 };
 Home.foodList = () => {
   const have = Object.keys(FOODS).filter((id) => (save.food[id] || 0) > 0);
@@ -293,7 +306,7 @@ Home.foodList = () => {
 };
 Ex.acts.cook = (d) => {
   const f = FOODS[d.id]; if (!f || Home.cook) return;
-  if (Home.grillT <= 0) { G.ui.toast('🔥 Mangal söndü!'); closeScreen(); return; }
+  if (Home.curT() <= 0) { G.ui.toast('🔥 Mangal söndü!'); closeScreen(); return; }
   if (save.coins < f.price) { G.ui.toast('🪙 Yeterli paran yok.'); return; }
   addCoins(-f.price); Home.cook = { id: d.id, t: 0, total: f.time }; closeScreen(); $('cookBar').classList.remove('hidden'); Sfx.play('click');
 };
@@ -306,8 +319,8 @@ Home.eat = (id) => {
 };
 Home.updateCook = (dt) => {
   const c = Home.cook; if (!c) return;
-  const gr = Home.grill, far = Math.hypot(P.pos.x - gr.x, P.pos.z - gr.z) > 7;
-  if (far || Home.grillT <= 0) { Home.cook = null; $('cookBar').classList.add('hidden'); addCoins(FOODS[c.id].price); G.ui.toast('🍳 Mangaldan uzaklaştın, pişirme iptal. Paran iade!'); return; }
+  const gr = Home.cookG || Home.grill, far = Math.hypot(P.pos.x - gr.x, P.pos.z - gr.z) > 7;
+  if (far || Home.curT() <= 0) { Home.cook = null; $('cookBar').classList.add('hidden'); addCoins(FOODS[c.id].price); G.ui.toast('🍳 Mangaldan uzaklaştın, pişirme iptal. Paran iade!'); return; }
   c.t += dt; $('cookFill').style.transform = `scaleX(${clamp(c.t / c.total, 0, 1)})`; $('cookTxt').textContent = `${FOODS[c.id].icon} ${FOODS[c.id].name} pişiyor…`;
   if (Math.random() < 0.5) FX.spawn(gr.x + rand(-0.4, 0.4), 1.3, gr.z + rand(-0.3, 0.3), rand(-0.3, 0.3), rand(1.2, 2.2), rand(-0.3, 0.3), 0xe8e8ee, 0.18, 1.1, -1);
   if (c.t >= c.total) { save.food[c.id] = (save.food[c.id] || 0) + 1; queueSave(); Home.cook = null; $('cookBar').classList.add('hidden'); Sfx.play('chest'); celebrate(gr.x, 1.2, gr.z, false, 'Hazır! 😋'); G.ui.toast(`${FOODS[c.id].icon} ${FOODS[c.id].name} hazır! Çantana eklendi.`, 'gold'); addStat && addStat('abil'); }
@@ -321,10 +334,10 @@ Home.houseParty = (h) => {
   if (Home.party) { G.ui.toast('🎉 Bir parti zaten sürüyor!'); return; }
   const w = Home.w; if (!w) return; const fid = h.fid, others = allRescued().filter((f) => f !== fid).sort(() => Math.random() - 0.5).slice(0, 5), fr = [fid, ...others];
   const R = h.o.r, c = Math.cos(R), s = Math.sin(R), tw = (lx, lz) => ({ x: h.o.x + lx * c + lz * s, z: h.o.z - lx * s + lz * c });
-  const ctr = tw(-0.1, 0.5), pads = fr.map((f, i) => { const a = (i / fr.length) * 6.283 + 0.4, p = tw(-0.1 + Math.cos(a) * 1.9, 0.5 + Math.sin(a) * 1.3); return { x: p.x, z: p.z }; });
+  const ctr = tw(0, 0.5), pads = fr.map((f, i) => { const a = (i / fr.length) * 6.283 + 0.4, p = tw(Math.cos(a) * 2.6, 0.5 + Math.sin(a) * 2.0); return { x: p.x, z: p.z }; });
   const cush = [], cols = [0xff8fb1, 0xffd23f, 0x7fd8ff, 0xa6e36f, 0xc89bff, 0xffa05c];
   pads.forEach((p, i) => { const pd = mesh(geo('cyl', 0.5, 0.54, 0.16, 12), hm(cols[i % 6]), p.x, 0.17, p.z); w.group.add(pd); cush.push(pd); });
-  Home.startParty({ fr, pads, center: ctr, spawn: tw(0, 7.4), y: 0.17, cush, label: `${FRIENDS[fid].name}'in evinde` });
+  Home.startParty({ fr, pads, center: ctr, spawn: tw(0, 10.5), y: 0.17, cush, label: `${FRIENDS[fid].name}'in evinde` });
 };
 Home.startParty = (site) => {
   if (!site) {
@@ -393,7 +406,7 @@ Home.onWorld = (w) => {
   Ex.seat = null; Home.party = null; Home.cook = null; $('cookBar') && $('cookBar').classList.add('hidden');
   const wp = $('woodPill'); if (wp) wp.classList.toggle('hidden', w.id !== 'village');
   if (w.id !== 'village') { Home.w = null; return; }
-  Home.setPlot(save.home.plot || 0); Home.clearGhosts(); Home.w = w; Home.solids = []; Home.grillT = 0; Home.campT = 0; Home.buildYard(w); Home.rebuild(); Home.buildMarkers(w);
+  Home.setPlot(save.home.plot || 0); Home.clearGhosts(); Home.w = w; Home.solids = []; Home.grillT = 0; Home.campT = 0; Home.cookG = null; Home.buildYard(w); (w.vtrees || []).forEach((t) => Home.adoptTree(w, t)); Home.rebuild(); Home.buildMarkers(w);
   if (Net.active) Net.send(Net.hello());
 };
 Home.update = (dt) => {
@@ -453,7 +466,7 @@ Home.dropGhost = (id) => {
   if (g.label) Labels.remove(g.label); Home.ghosts.delete(id);
 };
 Home.buildGhost = (id, p) => {
-  const w = Home.w, hs = p.hs, pl = HOME_PLOTS[hs.p], O = { x: pl.x - 6, z: pl.z }, HX = Home.HX, HZ = Home.HZ, FY = Home.FY, WH = 3.2, FHt = Home.FH, floors = hs.s >= 5 ? 3 : hs.s >= 4 ? 2 : 1;
+  const w = Home.w, hs = p.hs, pl = HOME_PLOTS[hs.p], O = { x: pl.x - 8, z: pl.z }, HX = Home.HX, HZ = Home.HZ, FY = Home.FY, WH = 3.2, FHt = Home.FH, floors = hs.s >= 5 ? 3 : hs.s >= 4 ? 2 : 1;
   const grp = new T.Group(); grp.position.set(O.x, 0, O.z); w.group.add(grp); const solids = [];
   gAdd(grp, hm(0xc99a5c), 0, FY - 0.2, 0, 2 * HX + 0.9, 0.4, 2 * HZ + 0.9);
   let top = FY + 0.5;

@@ -205,12 +205,12 @@ const rockMat = (col) => { const k = 'rk' + col; if (!matCache.has(k)) matCache.
 
 /* ---------- Dekor ---------- */
 function tree(w, x, y, z, s = 1, col = 0x3fae5a) {
-  const g = new T.Group(); g.position.set(x, y, z); g.scale.setScalar(s); blockAt(w, x, y, z, 0.36 * s, 4 * s);
+  const g = new T.Group(); g.position.set(x, y, z); g.scale.setScalar(s); const blk = blockAt(w, x, y, z, 0.36 * s, 4 * s);
   g.add(mesh(geo('cyl', 0.24, 0.42, 1.9, 12), barkMat(), 0, 0.95, 0));
   const sd = Math.floor(w.rng() * 5);
   const crown = mesh(geo('blob', 1.35, sd), M(col), 0, 2.6, 0); crown.scale.set(1, 0.9, 1); g.add(crown); g.add(mesh(geo('blob', 1.0, sd + 1), M(col + 0x0a1408), 0.75, 2.3, 0.35));
   g.add(mesh(geo('blob', 1.05, sd + 2), M(col + 0x081006), -0.7, 3.2, -0.25)); g.add(mesh(geo('blob', 0.8, sd + 3), M(col + 0x101c0c), 0.1, 3.75, 0.3));
-  shadowAll(g); addD(w, g);
+  shadowAll(g); addD(w, g); return { g, blk };
 }
 function bamboo(w, x, y, z, h = 5) {
   const g = new T.Group(); g.position.set(x, y, z); blockAt(w, x, y, z, 0.7, h * 0.8);
@@ -268,92 +268,20 @@ function scatter(w, n, fn, ex, bounds, rngSeed) {
 }
 
 /* ---------- KÖY ---------- */
-/* Gerçek 3B ev: kapıdan girilir, içinde eşyalar var. Oyuncu içeri girince çatı kalkar, duvarlar saydamlaşır. */
-function house(w, x, z, color, fid, rescued) {
-  const dx = -x, dz = 10 - z;
-  const rot = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? Math.PI / 2 : -Math.PI / 2) : (dz > 0 ? 0 : Math.PI);
-  const g = new T.Group(); g.position.set(x, 0, z); g.rotation.y = rot;
-  const HX = 4, HZ = 3.5, WH = 3.4, TH = 0.4, DW = 2.4, DH = 2.7, o = { x, z, r: rot };
-  const wallMat = new T.MeshStandardMaterial({ color, roughness: 0.92, bumpMap: roughTex(), bumpScale: 0.6 });
-  const trim = M(0x7a4a22), dark = M(0x5b3a1c), floorM = M(0xc99a5b, { roughness: 0.75 }), accent = { tavsan: 0xffa24a, kaplumbaga: 0x5ec27a, kedi: 0xff7eb6, tilki: 0xe8743b, minipanda: 0xb28bff }[fid] || 0x5ec8ff;
-  const box = (parent, m, px, py, pz, sx, sy, sz) => { const b = mesh(BOX(), m, px, py, pz); b.scale.set(sx, sy, sz); parent.add(b); return b; };
-  // zemin
-  box(g, floorM, 0, 0.05, 0, HX * 2, 0.1, HZ * 2);
-  for (let i = -3; i <= 3; i++) box(g, M(0xb98550, { roughness: 0.8 }), i * 1.1, 0.101, 0, 0.04, 0.004, HZ * 2 - 0.2);
-  localBlock(w, o, 0, 0, HX * 2 - 0.4, HZ * 2, -2, 0.1);
-  // duvarlar
-  const walls = [];
-  const wall = (lx, lz, sx, sz, y0 = 0, y1 = WH, collide = true) => { const b = box(g, wallMat, lx, (y0 + y1) / 2, lz, sx, y1 - y0, sz); walls.push(b); if (collide) localBlock(w, o, lx, lz, sx, sz, y0 > 0 ? y0 : y0 - 1.5, y1); return b; };
-  wall(0, -HZ + TH / 2, HX * 2, TH); wall(-HX + TH / 2, 0, TH, HZ * 2); wall(HX - TH / 2, 0, TH, HZ * 2);
-  const fw = HX - DW / 2; wall(-(HX + DW / 2) / 2, HZ - TH / 2, fw, TH); wall((HX + DW / 2) / 2, HZ - TH / 2, fw, TH);
-  wall(0, HZ - TH / 2, DW, TH, DH, WH);
-  // kapı çerçevesi + açık kapı kanadı
-  box(g, trim, -DW / 2 - 0.08, DH / 2, HZ + 0.02, 0.16, DH, 0.5); box(g, trim, DW / 2 + 0.08, DH / 2, HZ + 0.02, 0.16, DH, 0.5); box(g, trim, 0, DH + 0.08, HZ + 0.02, DW + 0.32, 0.16, 0.5);
-  const leaf = new T.Group(); leaf.position.set(-DW / 2, 0, HZ + 0.05); leaf.rotation.y = -1.75; g.add(leaf); box(leaf, M(0x8a5a2b), DW / 4, DH / 2 - 0.05, 0, DW / 2, DH - 0.1, 0.08); box(leaf, M(0xffd23f, { metalness: 0.5 }), DW / 2 - 0.15, DH * 0.45, 0.07, 0.1, 0.1, 0.06);
-  box(g, M(accent), 0, 0.12, HZ + 0.9, 1.8, 0.04, 1.0);
-  // pencereler (dışarıdan ve içeriden görünür çerçeve + cam)
-  const glass = rescued ? new T.MeshBasicMaterial({ color: 0xfff1a0 }) : M(0x7fa9c9, { roughness: 0.1, metalness: 0.3 });
-  const win = (lx, lz, face) => {
-    [1, -1].forEach((sd) => {
-      const px = lx + (face === 'x' ? sd * 0.0 : 0), pz = lz;
-      const grp = new T.Group(); grp.position.set(px, 1.9, pz); grp.rotation.y = face === 'x' ? Math.PI / 2 : 0; g.add(grp);
-      box(grp, glass, 0, 0, sd * (TH / 2 + 0.01), 1.0, 1.0, 0.03);
-      [[0, 0.58, 1.3, 0.1], [0, -0.58, 1.3, 0.1]].forEach(([a, b, c, d]) => box(grp, trim, a, b, sd * (TH / 2 + 0.04), c, d, 0.08));
-      [[-0.58], [0.58]].forEach(([a]) => box(grp, trim, a, 0, sd * (TH / 2 + 0.04), 0.1, 1.3, 0.08)); box(grp, trim, 0, 0, sd * (TH / 2 + 0.05), 0.05, 1.1, 0.05); box(grp, trim, 0, 0, sd * (TH / 2 + 0.05), 1.1, 0.05, 0.05);
-    });
-  };
-  win(-(HX + DW / 2) / 2, HZ - TH / 2, 'z'); win((HX + DW / 2) / 2, HZ - TH / 2, 'z'); win(-HX + TH / 2, -0.8, 'x'); win(HX - TH / 2, -0.8, 'x');
-  // alt şerit (lambri) iç duvarlarda
-  box(g, dark, 0, 0.45, -HZ + TH + 0.02, HX * 2 - TH * 2, 0.7, 0.04); box(g, dark, -HX + TH + 0.02, 0.45, 0, 0.04, 0.7, HZ * 2 - TH);
-  box(g, dark, HX - TH - 0.02, 0.45, 0, 0.04, 0.7, HZ * 2 - TH);
-  // çatı
-  const roofG = new T.Group(); roofG.position.y = WH; g.add(roofG);
-  const pyr = new T.Group(); pyr.scale.set((HX * 2 + 1.4) / 6.51, 1, (HZ * 2 + 1.4) / 6.51); roofG.add(pyr);
-  const cone = mesh(geo('cone', 4.6, 2.7, 4), M(0xc2523a, { flatShading: true, roughness: 0.7 }), 0, 1.35, 0); cone.rotation.y = Math.PI / 4; pyr.add(cone);
-  const chim = mesh(geo('cyl', 0.34, 0.34, 1.6, 8), M(0xb98a6a), 1.9, 2.0, -1.0); roofG.add(chim);
-  box(roofG, M(0x6a3a2a), 0, -0.1, 0, HX * 2 + 1.2, 0.2, HZ * 2 + 1.2);
-  // eşyalar (yerel)
-  const props = new T.Group(); g.add(props);
-  box(props, M(0xffffff), -2.5, 0.42, -2.2, 2.0, 0.28, 3.0); box(props, M(0x8b5a2b), -2.5, 0.2, -2.2, 2.2, 0.28, 3.2); box(props, M(0x8b5a2b), -2.5, 0.75, -3.65, 2.2, 1.1, 0.12);
-  box(props, M(0xfff6e3), -2.5, 0.64, -3.1, 1.5, 0.16, 0.7); box(props, M(accent), -2.5, 0.6, -1.7, 2.04, 0.12, 1.7);
-  localBlock(w, o, -2.5, -2.2, 2.3, 3.3, -1.5, 0.75);
-  const tb = new T.Group(); tb.position.set(2.0, 0, -0.9); props.add(tb); tb.add(mesh(geo('cyl', 0.9, 0.9, 0.1, 18), M(0xd6a15d), 0, 0.85, 0)); tb.add(mesh(geo('cyl', 0.14, 0.2, 0.75, 8), M(0x8b5a2b), 0, 0.45, 0)); tb.add(mesh(geo('cyl', 0.5, 0.5, 0.06, 14), M(0x8b5a2b), 0, 0.13, 0));
-  tb.add(mesh(geo('cyl', 0.22, 0.18, 0.2, 10), M(accent), 0.2, 1.02, 0.1)); tb.add(mesh(geo('sph', 0.12, 8, 6), M(0xff5f5f), -0.35, 0.98, -0.2));
-  localBlock(w, o, 2.0, -0.9, 1.5, 1.5, -1.5, 0.9);
-  [[2.0, 0.6], [0.95, -0.9]].forEach(([sx, sz]) => { const st = new T.Group(); st.position.set(sx, 0, sz); props.add(st); st.add(mesh(geo('cyl', 0.3, 0.3, 0.1, 10), M(accent), 0, 0.5, 0)); st.add(mesh(geo('cyl', 0.06, 0.06, 0.45, 6), M(0x8b5a2b), 0, 0.25, 0)); });
-  box(props, M(0x7a4a22), 3.55, 1.1, -2.6, 0.7, 2.2, 1.9);
-  for (let i = 0; i < 4; i++) for (let j = 0; j < 6; j++) box(props, M([0xff6f61, 0xffd23f, 0x5ec8ff, 0x7ed957, 0xb28bff][(i + j) % 5]), 3.2, 0.35 + i * 0.5, -3.3 + j * 0.28, 0.1, 0.34, 0.2);
-  localBlock(w, o, 3.55, -2.6, 0.8, 2.0, -1.5, 2.2);
-  const rug = mesh(geo('cyl', 1.6, 1.6, 0.03, 24), M(accent, { roughness: 1 }), -0.1, 0.115, 0.5); rug.scale.z = 0.7; props.add(rug); const rug2 = mesh(geo('cyl', 1.1, 1.1, 0.04, 24), M(0xfff6e3, { roughness: 1 }), -0.1, 0.12, 0.5); rug2.scale.z = 0.7; props.add(rug2);
-  const lamp = new T.Group(); lamp.position.set(-3.4, 0, 2.3); props.add(lamp); lamp.add(mesh(geo('cyl', 0.05, 0.05, 1.6, 6), M(0x3a3450), 0, 0.9, 0)); lamp.add(mesh(geo('cyl', 0.22, 0.34, 0.4, 10), new T.MeshBasicMaterial({ color: 0xfff1a0 }), 0, 1.8, 0)); lamp.add(mesh(geo('cyl', 0.25, 0.25, 0.06, 10), M(0x3a3450), 0, 0.12, 0));
-  const plant = new T.Group(); plant.position.set(3.2, 0, 2.4); props.add(plant); plant.add(mesh(geo('cyl', 0.3, 0.22, 0.5, 10), M(0xc2523a), 0, 0.3, 0)); [[0, 0.95, 0, 0.45], [0.25, 1.15, 0.1, 0.32], [-0.2, 1.1, -0.1, 0.34]].forEach(([a, b, c, r]) => plant.add(mesh(geo('sph', r, 8, 6), M(0x3fae5a), a, b, c)));
-  localBlock(w, o, 3.2, 2.4, 0.7, 0.7, -1.5, 1.4);
-  [[-0.2, -HZ + TH + 0.05, 1.2, 0.8], [1.7, -HZ + TH + 0.05, 0.7, 0.9]].forEach(([px, pz, sx, sy], i) => { box(g, M(0x5b3a1c), px, 2.0, pz, sx + 0.14, sy + 0.14, 0.05); box(g, M([0xffe27a, 0xcff3ff][i]), px, 2.0, pz + 0.02, sx, sy, 0.03); });
-  // arkadaşa özel eşya
-  const th = new T.Group(); th.position.set(-3.0, 0, 0.4); props.add(th);
-  if (fid === 'tavsan') { box(th, M(0x8b5a2b), 0, 0.25, 0, 0.9, 0.5, 0.7); for (let i = 0; i < 4; i++) { const c = mesh(geo('cone', 0.09, 0.5, 8), M(0xff8a2a), (i - 1.5) * 0.2, 0.7, 0); c.rotation.z = Math.PI; th.add(c); } }
-  else if (fid === 'kaplumbaga') { for (let i = 0; i < 3; i++) th.add(mesh(geo('sph', 0.34, 10, 8), M([0x5ec27a, 0x3f9b4a, 0x9fe3a8][i]), (i - 1) * 0.5, 0.25, i === 1 ? 0.3 : 0)); }
-  else if (fid === 'kedi') { box(th, M(0xd6a15d), 0, 0.5, 0, 0.1, 1.0, 0.1); box(th, M(0xffd2e1), 0, 0.12, 0, 0.7, 0.24, 0.7); box(th, M(0xffd2e1), 0, 1.05, 0, 0.5, 0.18, 0.5); th.add(mesh(geo('sph', 0.15, 8, 6), M(0xff7eb6), 0.3, 0.3, 0.3)); }
-  else if (fid === 'tilki') { for (let i = 0; i < 4; i++) box(th, M([0xe8743b, 0x5ec8ff, 0xffd23f, 0x7ed957][i]), 0, 0.08 + i * 0.14, 0, 0.7 - i * 0.04, 0.12, 0.5); }
-  else { [[0, 0.15, 0], [0.34, 0.15, 0.1], [0.12, 0.45, 0.04]].forEach(([a, b, c], i) => box(th, M([0xff6f61, 0x5ec8ff, 0xffd23f][i]), a, b, c, 0.3, 0.3, 0.3)); }
-  localBlock(w, o, -3.0, 0.4, 1.0, 0.9, -1.5, 0.6);
-  shadowAll(g, true, true); add(w, g);
-  if (rescued) { const rc = Math.cos(rot), rs = Math.sin(rot); addInteract(w, x - 0.1 * rc + 0.5 * rs, z + 0.1 * rs + 0.5 * rc, 3.2, '🌙 Pijama Partisi Yap', () => G.ex.home.houseParty({ fid, o })); }
-  (w.houses || (w.houses = [])).push({ minx: x - 5, maxx: x + 5, minz: z - 5, maxz: z + 5, o, hx: HX, hz: HZ, roof: roofG, mat: wallMat, op: 1 });
-  const dir = new T.Vector3(Math.sin(rot), 0, Math.cos(rot)), nx = x + dir.x * 6.2, nz = z + dir.z * 6.2;
-  addSign(w, nx + dir.z * 2.8, 0, nz - dir.x * 2.8, rescued ? `${FRIENDS[fid].emoji} ${FRIENDS[fid].name}'in evi — içeri girebilirsin!` : '❔ Boş ev — arkadaşını bul!');
-  if (rescued) { const n = makeCreature(fid); n.position.set(nx, 0, nz); n.rotation.y = rot + Math.PI * 0.9; add(w, n); w.npcs.push({ fid, x: nx, z: nz, mesh: n }); }
-}
+/* Arkadaş evleri: js/friends.js (Fh) tarafından, oyuncu yaklaştıkça kurulur. */
 function buildVillage() {
-  const vflats = [[0, 10, 22, 34, 0], [-31, 4, 11, 19, 0], [-27, -14, 11, 19, 0], [31, 4, 11, 19, 0], [27, -14, 11, 19, 0], [0, 33, 11, 19, 0], [-20, -28, 9, 16, 0], [0, -37, 9, 16, 0], [20, -28, 9, 16, 0], [-46, 38, 24, 34, 0], [30, 40, 8, 14, 0], [-100, 15, 24, 34, 0], [-85, -70, 24, 34, 0], [100, 25, 24, 34, 0], [70, -90, 24, 34, 0], [0, 95, 24, 34, 0], [125, -40, 11, 19, 0]];
-  const vpaths = [[[0, 10], [-31, 4]], [[0, 10], [-27, -14]], [[0, 10], [31, 4]], [[0, 10], [27, -14]], [[0, 10], [0, 33]], [[0, -6], [-20, -28]], [[0, -6], [0, -37]], [[0, -6], [20, -28]], [[0, 10], [-29, 38]], [[0, 10], [30, 40]], [[-31, 4], [-83, 15]], [[-27, -14], [-68, -70]], [[31, 4], [117, 25]], [[27, -14], [87, -90]], [[0, 33], [17, 95]], [[31, 4], [125, -40]]];
+  const vflats = [[0, 10, 22, 34, 0], [-31, 4, 14, 22, 0], [-27, -14, 14, 22, 0], [31, 4, 14, 22, 0], [27, -14, 14, 22, 0], [0, 33, 14, 22, 0], [-20, -28, 9, 16, 0], [0, -37, 9, 16, 0], [20, -28, 9, 16, 0], [30, 40, 8, 14, 0], [125, -40, 11, 19, 0]]
+    .concat(HOME_PLOTS.map((p) => [p.x, p.z, 32, 44, 0]), Fh.slots.map((p) => [p.x, p.z, 13, 20, 0]));
+  const vpaths = [[[0, 10], [-31, 4]], [[0, 10], [-27, -14]], [[0, 10], [31, 4]], [[0, 10], [27, -14]], [[0, 10], [0, 33]], [[0, -6], [-20, -28]], [[0, -6], [0, -37]], [[0, -6], [20, -28]], [[0, 10], [30, 40]], [[31, 4], [125, -40]]]
+    .concat(HOME_PLOTS.map((p) => [[p.x + 24, p.z], [p.x + 36, p.z]]));
+  const inFlat = (x, z) => vflats.some((q) => Math.hypot(x - q[0], z - q[1]) < q[2] + 3);
   const w = openWorld({
-    id: 'village', sky: [0x4fc3ff, 0xd9f6ff], fog: 0xd9f6ff, fogD: 0.0042, water: 0x3fb6e8, hemi: [0xffffff, 0x9acb8a, 0.85], sunI: 0.9, theme: 'village', rx: 150, rz: 150, half: 170, reach: 150, mapHalf: 165, flats: vflats, paths: vpaths, waterY: -1.2,
-    grass: [0x6bc94a, 0x7fdc58, 0x5ab83e], grassCount: 26000, relief: { pits: 2, mounds: 5, amp: 0.6, minBase: 2.6 },
+    id: 'village', sky: [0x4fc3ff, 0xd9f6ff], fog: 0xd9f6ff, fogD: 0.0042, water: 0x3fb6e8, hemi: [0xffffff, 0x9acb8a, 0.85], sunI: 0.9, theme: 'village', rx: 200, rz: 200, half: 220, reach: 200, mapHalf: 215, flats: vflats, paths: vpaths, waterY: -1.2,
+    grass: [0x6bc94a, 0x7fdc58, 0x5ab83e], grassCount: 36000, relief: { pits: 2, mounds: 5, amp: 0.6, minBase: 2.6 },
     hills: (x, z) => 1.6 * Math.sin(x * 0.05 + 0.5) * Math.cos(z * 0.045) + 0.9 * Math.sin(x * 0.12 + z * 0.1) * Math.cos(x * 0.07) + 1.4,
     color: (x, z, h, sl, pd) => {
       if (Math.hypot(x, z - 10) < 19) return (Math.floor(x / 2) + Math.floor(z / 2)) % 2 ? 0xe2d8c3 : 0xd8cdb6;
-      if (pd < 2.2) return 0xd6c3a0; if (h < 0.9 && Math.hypot(x, z) > 66) return 0xf0e2b0; if (sl > 0.9) return 0xa09a84;
+      if (pd < 2.2) return 0xd6c3a0; if (h < 0.9 && Math.hypot(x, z) > 66 && !inFlat(x, z)) return 0xf0e2b0; if (sl > 0.9) return 0xa09a84;
       const n = Math.sin(x * 0.3) * Math.cos(z * 0.27) + Math.sin(x * 0.13 + z * 0.17); return n > 0.5 ? 0x86dc58 : n > -0.4 ? 0x79d150 : 0x6cc24a;
     },
   });
@@ -374,21 +302,20 @@ function buildVillage() {
     [-0.6, 0.6].forEach((dx) => { const dr = mesh(BOX(), M(0x8a3fd6), dx, 1.5, 0.58); dr.scale.set(1.1, 2.7, 0.06); g.add(dr); });
     g.add(mesh(geo('sph', 0.1, 6, 6), M(0xffd23f), -0.1, 1.5, 0.64)); g.add(mesh(geo('sph', 0.1, 6, 6), M(0xffd23f), 0.1, 1.5, 0.64)); g.add(mesh(geo('sph', 0.45, 8, 6), M(0xffd23f), 0, 3.2, 0));
     shadowAll(g); add(w, g); addInteract(w, 8, 7, 3.6, '👗 Gardırop', () => G.ui.openWardrobe()); }
-  // evler
-  const done = (f) => !!save.rescued[f];
-  house(w, -31, 4, 0xffe7c2, 'tavsan', done('tavsan')); house(w, -27, -14, 0xc9f0cf, 'kaplumbaga', done('kaplumbaga'));
-  house(w, 31, 4, 0xffd5c2, 'kedi', done('kedi')); house(w, 27, -14, 0xffe0a8, 'tilki', done('tilki')); house(w, 0, 33, 0xe6dcff, 'minipanda', done('minipanda'));
+  // arkadaş evleri: Fh.update ile yaklaşınca kurulur
+  w.fhouses = Fh.plan(); w.fh = { built: new Map() };
   addSign(w, 4, 0, 14, '🐼 Mochi: Arkadaşlarımı kurtarmalıyım! Portallara git!');
   addSign(w, 0, 0, -31, '🔒 Önce Bambu Ormanı’nı bitir!'); addSign(w, 20, 0, -23, '🔒 Önce Gizli Mağara’yı bitir!');
   // ağaçlar, çiçekler
-  const ex = exclusions(w);
-  scatterT(w, 210, (x, h, z) => tree(w, x, h, z, 0.8 + w.rng() * 0.8, pick([0x3fae5a, 0x4fc060, 0x35a055])), ex, { minH: 1 });
-  scatterT(w, 560, (x, h, z) => flower(w, x, h, z, pick([0xff7eb6, 0xffd23f, 0xffffff, 0x8fd0ff])), ex, { minH: 1 });
-  scatterT(w, 70, (x, h, z) => rock(w, x, h, z, 0.6 + w.rng() * 1.2), ex, { minH: 0.9 });
-  scatterT(w, 24, (x, h, z) => bamboo(w, x, h, z, 4.5), ex, { minH: 1 });
-  scatterT(w, 30, (x, h, z) => mushroom(w, x, h, z, 0.8 + w.rng() * 0.8, pick([0xff5f5f, 0xffa24a])), ex, { minH: 1 });
+  const ex = exclusions(w), vt = []; w.vtrees = vt;
+  const vtree = (x, h, z, sc, col) => { const r = tree(w, x, h, z, sc, col); vt.push({ g: r.g, blk: r.blk, x, z, s: sc }); };
+  scatterT(w, 300, (x, h, z) => vtree(x, h, z, 0.8 + w.rng() * 0.8, pick([0x3fae5a, 0x4fc060, 0x35a055])), ex, { minH: 1 });
+  scatterT(w, 800, (x, h, z) => flower(w, x, h, z, pick([0xff7eb6, 0xffd23f, 0xffffff, 0x8fd0ff])), ex, { minH: 1 });
+  scatterT(w, 110, (x, h, z) => rock(w, x, h, z, 0.6 + w.rng() * 1.2), ex, { minH: 0.9 });
+  scatterT(w, 32, (x, h, z) => bamboo(w, x, h, z, 4.5), ex, { minH: 1 });
+  scatterT(w, 44, (x, h, z) => mushroom(w, x, h, z, 0.8 + w.rng() * 0.8, pick([0xff5f5f, 0xffa24a])), ex, { minH: 1 });
   // gökte süzülen adalar (uçmayı öğrenince)
-  const isl = (x, y, z, s) => { solid(w, x, y, z, s, s, { h: 3, type: 'grass' }); tree(w, x - s / 3, y, z - s / 3, 0.7); flower(w, x + 1, y, z, 0xff7eb6); flower(w, x - 1, y, z + 1, 0xffd23f); };
+  const isl = (x, y, z, s) => { solid(w, x, y, z, s, s, { h: 3, type: 'grass' }); vtree(x - s / 3, y, z - s / 3, 0.7, 0x3fae5a); flower(w, x + 1, y, z, 0xff7eb6); flower(w, x - 1, y, z + 1, 0xffd23f); };
   isl(-30, 14, -36, 12); isl(30, 14, -36, 12); isl(0, 22, -60, 14);
   addChest(w, 'vg1', -30, 14, -33); addChest(w, 'vg2', 30, 14, -33); addChest(w, 'vg3', 0, 22, -57);
   coinRing(w, -30, 15.2, -36, 3.5, 8); coinRing(w, 30, 15.2, -36, 3.5, 8); coinRing(w, 0, 23.2, -60, 4.5, 10); addCoin(w, 0, 24.5, -60, true);
